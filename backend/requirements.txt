@@ -1,0 +1,58 @@
+# Core
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+python-multipart==0.0.9
+pydantic==2.6.1
+pydantic-settings==2.2.1
+
+# Database
+sqlalchemy==2.0.25
+asyncpg==0.29.0
+alembic==1.13.1
+psycopg2-binary==2.9.9
+
+# Redis
+redis==5.0.1
+
+# Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
+
+# HTTP Client
+httpx==0.26.0
+
+# Validation
+email-validator==2.1.0.post1
+
+# WebSockets
+websockets==12.0
+
+# Stripe
+stripe==8.2.0
+
+# Background Tasks
+celery==5.3.6
+
+# Email (SendGrid)
+sendgrid==6.11.0
+
+# SMS (Twilio)
+twilio==8.13.0
+
+# Cloud Storage (S3/R2)
+aioboto3==12.3.0
+aiofiles==23.2.1
+
+# Utils
+python-dotenv==1.0.1
+orjson==3.9.13
+
+# Development & Testing
+pytest==8.0.0
+pytest-asyncio==0.23.4
+httpx==0.26.0
+aiosqlite==0.19.0
+black==24.1.1
+isort==5.13.2
+mypy==1.8.0
