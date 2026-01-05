@@ -1,0 +1,26 @@
+# PWA Icons Directory
+
+This directory should contain the following icons for PWA support:
+
+## Required Icons
+- icon-72x72.png
+- icon-96x96.png
+- icon-128x128.png
+- icon-144x144.png
+- icon-152x152.png
+- icon-192x192.png
+- icon-384x384.png
+- icon-512x512.png
+
+## Optional Action Icons (for notifications)
+- call-answer.png
+- call-decline.png
+- view.png
+- dismiss.png
+
+## Icon Requirements
+- All icons should be square PNG files
+- Use a consistent design with the FaceMortgage brand colors
+- Primary color: #2563eb (blue-600)
+- Background color: #f9fafb (gray-50)
+- Icons should work well as both regular and maskable icons

@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import String, Boolean, DateTime, Enum as SQLEnum
+from sqlalchemy import String, Boolean, DateTime, Enum as SQLEnum, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
 
 from src.app.core.database import Base
 
@@ -46,7 +46,8 @@ class User(Base):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Push notification settings
-    device_tokens: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Using JSON instead of JSONB for SQLite test compatibility
+    device_tokens: Mapped[list | None] = mapped_column(JSON, nullable=True)
     push_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     last_platform: Mapped[str | None] = mapped_column(String(20), nullable=True)
 

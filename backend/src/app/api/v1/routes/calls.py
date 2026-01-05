@@ -5,17 +5,20 @@ Handles:
 - Call initiation (authenticated and anonymous)
 - Call state management
 - Post-call actions (rating, lead creation, lead capture for anonymous)
+- LiveKit integration (optional, for scalable video infrastructure)
 """
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
 import uuid
+import logging
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from src.app.core.dependencies import DbSession, CurrentUser, CurrentUserOptional
+from src.app.config import settings
 from src.app.models.user import User
 from src.app.models.professional import ProfessionalProfile, ProfessionalStatus
 from src.app.models.call import VideoCall, CallStatus
@@ -24,6 +27,8 @@ from src.app.models.lead import Lead, LeadActivity, LeadStatus
 from src.app.signaling import get_signaling_service
 from src.app.signaling.service import CallState
 from src.app.presence import get_presence_service, connection_manager
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -46,6 +51,10 @@ class InitiateCallResponse(BaseModel):
     call_id: UUID
     is_anonymous: bool = False
     session_id: Optional[str] = None
+    # LiveKit fields (only present when using LiveKit)
+    use_livekit: bool = False
+    livekit_url: Optional[str] = None
+    livekit_token: Optional[str] = None
 
 
 class CaptureLeadRequest(BaseModel):
@@ -98,11 +107,14 @@ async def initiate_call(
     Initiate a video call with a professional.
 
     This creates a call room and returns connection info.
-    The borrower should then connect to the signaling WebSocket.
+    The borrower should then connect to the signaling WebSocket (or LiveKit if enabled).
 
     Supports both authenticated and anonymous callers:
     - Authenticated: Uses user ID for tracking
     - Anonymous: Uses session ID for tracking, prompts for info after call
+
+    When USE_LIVEKIT=true, returns LiveKit connection info for SFU-based video.
+    Otherwise, uses custom WebRTC signaling for peer-to-peer video.
     """
     signaling = get_signaling_service()
     presence = get_presence_service()
@@ -144,27 +156,88 @@ async def initiate_call(
             detail="Professional is not available",
         )
 
-    # Create call room
-    try:
-        room = await signaling.create_room(
-            borrower_id=caller_id,
-            professional_id=str(professional.id),
-        )
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(e),
-        )
+    # Check if LiveKit is enabled
+    use_livekit = settings.use_livekit
+    livekit_url = None
+    livekit_token = None
+    room_id = None
 
-    # Update room state to ringing
-    await signaling.update_room_state(room.room_id, CallState.RINGING)
+    if use_livekit:
+        # Use LiveKit for scalable video
+        try:
+            from src.app.integrations.livekit import get_livekit_service
+            from src.app.integrations.livekit.service import ParticipantRole
+
+            livekit = get_livekit_service()
+
+            if not livekit.is_configured:
+                logger.warning("LiveKit enabled but not configured, falling back to custom signaling")
+                use_livekit = False
+            else:
+                # Generate room name
+                room_id = livekit.generate_room_name(
+                    caller_id[:8] if len(caller_id) > 8 else caller_id,
+                    str(professional.id)[:8],
+                )
+
+                # Create LiveKit room
+                await livekit.create_room(room_id)
+
+                # Generate token for borrower
+                borrower_token = livekit.create_token(
+                    room_name=room_id,
+                    participant_identity=caller_id,
+                    participant_name=caller_name,
+                    role=ParticipantRole.BORROWER,
+                    metadata={
+                        "is_anonymous": is_anonymous,
+                        "professional_id": str(professional.id),
+                    },
+                )
+                livekit_token = borrower_token.token
+                livekit_url = settings.livekit_url
+
+                # Also create token for professional (will be sent via notification)
+                professional_token = livekit.create_token(
+                    room_name=room_id,
+                    participant_identity=str(professional.id),
+                    participant_name=f"{professional.user.first_name} {professional.user.last_name}",
+                    role=ParticipantRole.PROFESSIONAL,
+                )
+
+                logger.info(f"LiveKit room created: {room_id}")
+
+        except ImportError:
+            logger.warning("LiveKit SDK not installed, falling back to custom signaling")
+            use_livekit = False
+        except Exception as e:
+            logger.error(f"LiveKit initialization failed: {e}, falling back to custom signaling")
+            use_livekit = False
+
+    # Use custom signaling if LiveKit is not enabled/available
+    if not use_livekit:
+        # Create call room with custom signaling
+        try:
+            room = await signaling.create_room(
+                borrower_id=caller_id,
+                professional_id=str(professional.id),
+            )
+            room_id = room.room_id
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(e),
+            )
+
+        # Update room state to ringing
+        await signaling.update_room_state(room_id, CallState.RINGING)
 
     # Mark professional as busy
-    await presence.set_busy(str(professional.id), room.room_id)
+    await presence.set_busy(str(professional.id), room_id)
 
     # Create video call record in database
     video_call = VideoCall(
-        room_id=room.room_id,
+        room_id=room_id,
         borrower_id=borrower_id,  # None for anonymous
         professional_id=professional.id,
         anonymous_session_id=anonymous_session_id if is_anonymous else None,
@@ -176,15 +249,24 @@ async def initiate_call(
     await db.commit()
     await db.refresh(video_call)
 
+    # Prepare notification payload
+    notification_payload = {
+        "room_id": room_id,
+        "caller_id": caller_id,
+        "caller_name": caller_name,
+        "is_anonymous": is_anonymous,
+        "use_livekit": use_livekit,
+    }
+
+    # Include LiveKit token for professional if using LiveKit
+    if use_livekit and 'professional_token' in dir():
+        notification_payload["livekit_url"] = livekit_url
+        notification_payload["livekit_token"] = professional_token.token
+
     # Notify professional via presence WebSocket
     await connection_manager.send_to_professional(str(professional.id), {
         "type": "incoming_call",
-        "payload": {
-            "room_id": room.room_id,
-            "caller_id": caller_id,
-            "caller_name": caller_name,
-            "is_anonymous": is_anonymous,
-        },
+        "payload": notification_payload,
     })
 
     # Send push notification for mobile (in addition to WebSocket)
@@ -194,26 +276,28 @@ async def initiate_call(
         await push_service.send_incoming_call(
             professional_user_id=str(professional.user_id),
             caller_name=caller_name,
-            room_id=room.room_id,
+            room_id=room_id,
             call_id=str(video_call.id),
         )
     except Exception as e:
         # Don't fail the call if push fails - WebSocket is primary
-        import logging
-        logging.getLogger(__name__).warning(f"Push notification failed: {e}")
+        logger.warning(f"Push notification failed: {e}")
 
-    # Get ICE servers
-    ice_servers = await signaling.get_ice_servers()
+    # Get ICE servers (only needed for custom signaling)
+    ice_servers = await signaling.get_ice_servers() if not use_livekit else []
 
     return InitiateCallResponse(
-        room_id=room.room_id,
-        signaling_url=f"/ws/signaling/{room.room_id}/{caller_id}",
+        room_id=room_id,
+        signaling_url=f"/ws/signaling/{room_id}/{caller_id}" if not use_livekit else "",
         ice_servers=ice_servers,
         professional_name=f"{professional.user.first_name} {professional.user.last_name}",
         professional_avatar=professional.user.avatar_url,
         call_id=video_call.id,
         is_anonymous=is_anonymous,
         session_id=anonymous_session_id,
+        use_livekit=use_livekit,
+        livekit_url=livekit_url,
+        livekit_token=livekit_token,
     )
 
 

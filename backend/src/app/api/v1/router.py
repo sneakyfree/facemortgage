@@ -3,11 +3,12 @@ from fastapi import APIRouter
 from src.app.api.v1.routes import (
     auth, users, professionals, lookups, videos, calls, billing, stats,
     leads, analytics, admin, grid, scheduled_calls, soft_leads, partnerships,
-    devices
+    devices, health
 )
 
 api_router = APIRouter()
 
+api_router.include_router(health.router, prefix="/health", tags=["health"])
 api_router.include_router(auth.router, prefix="/auth", tags=["authentication"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(professionals.router, prefix="/professionals", tags=["professionals"])

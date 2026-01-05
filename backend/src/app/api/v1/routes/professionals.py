@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status
@@ -481,3 +482,154 @@ async def go_offline(
         "status": ProfessionalStatus.OFFLINE.value,
         "message": "You are now offline",
     }
+
+
+@router.get("/{professional_id}/baseball-card")
+async def get_baseball_card(
+    professional_id: UUID,
+    db: DbSession,
+):
+    """
+    Get baseball card stats for a professional.
+
+    Returns external production data from data providers (Datagod, CoreLogic, etc.)
+    combined with internal platform statistics.
+    """
+    from src.app.integrations.data_providers.factory import DataProviderFactory
+
+    # Get professional
+    query = (
+        select(ProfessionalProfile)
+        .options(selectinload(ProfessionalProfile.user))
+        .where(ProfessionalProfile.id == professional_id)
+    )
+    result = await db.execute(query)
+    professional = result.scalar_one_or_none()
+
+    if not professional:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Professional not found",
+        )
+
+    response = {
+        "professional_id": str(professional.id),
+        "name": f"{professional.user.first_name} {professional.user.last_name}",
+        "company": professional.company_name,
+        "nmls_id": professional.nmls_id,
+        "internal_stats": {
+            "avg_rating": float(professional.avg_rating) if professional.avg_rating else None,
+            "total_reviews": professional.total_reviews,
+            "avg_pickup_time_seconds": float(professional.avg_pickup_time_seconds) if professional.avg_pickup_time_seconds else None,
+            "total_calls": professional.total_calls_completed,
+            "years_experience": professional.years_experience,
+        },
+        "external_stats": None,
+        "license_info": None,
+        "provider": None,
+        "error": None,
+    }
+
+    # If no NMLS ID, return just internal stats
+    if not professional.nmls_id:
+        response["error"] = "NMLS ID not configured"
+        return response
+
+    # Fetch external data from data provider
+    try:
+        provider = DataProviderFactory.get_provider()
+        response["provider"] = provider.provider_name
+
+        # Get professional stats
+        stats = await provider.get_professional_stats(professional.nmls_id)
+        if stats:
+            response["external_stats"] = {
+                "years_in_industry": stats.years_in_industry,
+                "total_loans_career": stats.total_loans_career,
+                "total_volume_career": float(stats.total_volume_career) if stats.total_volume_career else None,
+                "loans_last_12_months": stats.loans_last_12_months,
+                "volume_last_12_months": float(stats.volume_last_12_months) if stats.volume_last_12_months else None,
+                "avg_loan_size_12_months": float(stats.avg_loan_size_12_months) if stats.avg_loan_size_12_months else None,
+                "loans_ytd": stats.loans_ytd,
+                "volume_ytd": float(stats.volume_ytd) if stats.volume_ytd else None,
+                "conventional_pct": stats.conventional_pct,
+                "fha_pct": stats.fha_pct,
+                "va_pct": stats.va_pct,
+                "purchase_pct": stats.purchase_pct,
+                "refinance_pct": stats.refinance_pct,
+                "state_rank": stats.state_rank,
+                "national_rank": stats.national_rank,
+                "top_states": stats.top_states,
+                "fetched_at": stats.fetched_at.isoformat() if stats.fetched_at else None,
+            }
+
+        # Get license info
+        license_info = await provider.get_license_info(professional.nmls_id)
+        if license_info:
+            response["license_info"] = {
+                "name": license_info.name,
+                "license_type": license_info.license_type,
+                "status": license_info.status.value if license_info.status else None,
+                "company_name": license_info.company_name,
+                "company_nmls_id": license_info.company_nmls_id,
+                "state_licenses": license_info.state_licenses,
+                "issue_date": license_info.issue_date.isoformat() if license_info.issue_date else None,
+                "expiry_date": license_info.expiry_date.isoformat() if license_info.expiry_date else None,
+            }
+
+    except Exception as e:
+        response["error"] = f"Unable to fetch external data: {str(e)}"
+
+    return response
+
+
+@router.get("/{professional_id}/verify-nmls")
+async def verify_nmls(
+    professional_id: UUID,
+    db: DbSession,
+):
+    """
+    Verify a professional's NMLS license is valid and active.
+    """
+    from src.app.integrations.data_providers.factory import DataProviderFactory
+
+    # Get professional
+    query = select(ProfessionalProfile).where(ProfessionalProfile.id == professional_id)
+    result = await db.execute(query)
+    professional = result.scalar_one_or_none()
+
+    if not professional:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Professional not found",
+        )
+
+    if not professional.nmls_id:
+        return {
+            "verified": False,
+            "nmls_id": None,
+            "error": "NMLS ID not configured",
+        }
+
+    try:
+        provider = DataProviderFactory.get_provider()
+        is_valid = await provider.verify_nmls(professional.nmls_id)
+
+        # Update professional's verification status
+        if is_valid and not professional.nmls_verified:
+            professional.nmls_verified = True
+            professional.nmls_verified_at = datetime.utcnow()
+            await db.commit()
+
+        return {
+            "verified": is_valid,
+            "nmls_id": professional.nmls_id,
+            "verified_at": professional.nmls_verified_at.isoformat() if professional.nmls_verified_at else None,
+        }
+
+    except Exception as e:
+        return {
+            "verified": False,
+            "nmls_id": professional.nmls_id,
+            "error": f"Verification failed: {str(e)}",
+        }

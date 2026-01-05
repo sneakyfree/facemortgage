@@ -2,9 +2,9 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from sqlalchemy import String, DateTime, ForeignKey, Numeric, Text, Enum as SQLEnum
+from sqlalchemy import String, DateTime, ForeignKey, Numeric, Text, Enum as SQLEnum, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
 from typing import List
 
 from src.app.core.database import Base
@@ -96,7 +96,8 @@ class LeadActivity(Base):
     )
     activity_type: Mapped[str] = mapped_column(String(50), nullable=False)  # call, email, note, status_change
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    activity_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Using JSON instead of JSONB for SQLite test compatibility
+    activity_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     performed_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )

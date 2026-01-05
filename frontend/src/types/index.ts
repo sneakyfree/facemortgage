@@ -122,8 +122,25 @@ export interface GridFilters {
   language?: string;
   specialty?: number;
   county?: number;
+  state_code?: string;
   user_type?: UserType;
   min_rating?: number;
+}
+
+// Geo-location types
+export interface GeoLocationData {
+  state_code: string | null;
+  state_name: string | null;
+  city: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  source: 'browser' | 'ip' | 'cached' | 'coordinates' | 'unknown';
+}
+
+export interface USState {
+  code: string;
+  name: string;
 }
 
 export interface ProfessionalGridResponse {

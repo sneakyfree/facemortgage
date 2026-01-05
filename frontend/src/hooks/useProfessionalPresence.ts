@@ -3,8 +3,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import type { ProfessionalStatus } from '@/types';
-
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
+import { WS_BASE_URL, config } from '@/lib/config';
 
 // Map WebSocket status strings to frontend status types
 const STATUS_MAP: Record<string, ProfessionalStatus> = {
@@ -88,12 +87,12 @@ export function useProfessionalPresence(options: UseProfessionalPresenceOptions 
       clearInterval(heartbeatIntervalRef.current);
     }
 
-    // Send heartbeat every 10 seconds
+    // Send heartbeat at configured interval
     heartbeatIntervalRef.current = setInterval(() => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'heartbeat' }));
       }
-    }, 10000);
+    }, config.ws.heartbeatInterval);
   }, []);
 
   const stopHeartbeat = useCallback(() => {
@@ -116,7 +115,7 @@ export function useProfessionalPresence(options: UseProfessionalPresenceOptions 
     try {
       const professionalId = user.professional_profile.id;
       const token = getAccessToken();
-      const url = `${WS_URL}/ws/presence/${professionalId}${token ? `?token=${token}` : ''}`;
+      const url = `${WS_BASE_URL}/ws/presence/${professionalId}${token ? `?token=${token}` : ''}`;
 
       wsRef.current = new WebSocket(url);
 

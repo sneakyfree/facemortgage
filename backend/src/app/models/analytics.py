@@ -3,9 +3,9 @@ Analytics models for tracking grid impressions and user interactions.
 """
 import uuid
 from datetime import datetime, date
-from sqlalchemy import String, DateTime, Date, ForeignKey, Integer, Index
+from sqlalchemy import String, DateTime, Date, ForeignKey, Integer, Index, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
 
 from src.app.core.database import Base
 
@@ -77,7 +77,8 @@ class GridClick(Base):
     # Click context
     click_type: Mapped[str] = mapped_column(String(30), nullable=False)  # 'profile_view', 'call_initiated', 'video_preview'
     grid_position: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    filter_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # What filters were active
+    # Using JSON instead of JSONB for SQLite test compatibility
+    filter_context: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # What filters were active
 
     # Request metadata
     referrer: Mapped[str | None] = mapped_column(String(500), nullable=True)

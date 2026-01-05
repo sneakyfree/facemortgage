@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, DateTime, ForeignKey
+from sqlalchemy import String, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
 
 from src.app.core.database import Base
 
@@ -18,8 +18,9 @@ class BorrowerProfile(Base):
     )
 
     # Preferences (for matching)
-    preferred_languages: Mapped[list | None] = mapped_column(JSONB, default=["en"])
-    preferred_counties: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Using JSON instead of JSONB for SQLite test compatibility
+    preferred_languages: Mapped[list | None] = mapped_column(JSON, default=["en"])
+    preferred_counties: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     # Loan interest
     loan_purpose: Mapped[str | None] = mapped_column(String(50), nullable=True)  # purchase, refinance, heloc

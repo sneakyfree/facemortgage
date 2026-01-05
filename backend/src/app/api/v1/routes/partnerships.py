@@ -17,7 +17,10 @@ from src.app.models.partnership import Partnership, PartnershipStatus, Partnersh
 from src.app.models.professional import ProfessionalProfile
 from src.app.models.user import UserType
 from src.app.models.lead import Lead, LeadStatus, LeadActivity
+from src.app.services.email_service import get_email_service
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -138,17 +141,23 @@ async def invite_partner(
     await db.commit()
     await db.refresh(partnership)
 
-    # TODO: Send invitation email
-    # send_partnership_invitation.delay(
-    #     realtor_email=request.realtor_email,
-    #     realtor_name=request.realtor_name,
-    #     lo_name=f"{current_user.first_name} {current_user.last_name}",
-    #     invitation_link=f"{settings.FRONTEND_URL}/partner/accept/{partnership.invitation_token}",
-    # )
+    # Send invitation email
+    invitation_sent = False
+    try:
+        email_service = get_email_service()
+        invitation_sent = await email_service.send_partnership_invitation(
+            realtor_email=request.realtor_email,
+            realtor_name=request.realtor_name,
+            lo_name=f"{current_user.first_name} {current_user.last_name}",
+            lo_company=professional.company_name or "FaceMortgage",
+            invitation_token=partnership.invitation_token,
+        )
+    except Exception as e:
+        logger.error(f"Failed to send partnership invitation email: {e}")
 
     return InvitePartnerResponse(
         partnership_id=partnership.id,
-        invitation_sent=True,
+        invitation_sent=invitation_sent,
     )
 
 
@@ -409,8 +418,30 @@ async def submit_referral(
     db.add(activity)
     await db.commit()
 
-    # TODO: Notify loan officer of new referral
-    # send_new_referral_notification.delay(...)
+    # Notify loan officer of new referral
+    try:
+        # Get loan officer's profile and email
+        lo_query = (
+            select(ProfessionalProfile)
+            .options(selectinload(ProfessionalProfile.user))
+            .where(ProfessionalProfile.id == partnership.loan_officer_id)
+        )
+        lo_result = await db.execute(lo_query)
+        loan_officer = lo_result.scalar_one_or_none()
+
+        if loan_officer:
+            email_service = get_email_service()
+            await email_service.send_new_referral_notification(
+                professional_email=loan_officer.user.email,
+                realtor_name=f"{professional.user.first_name} {professional.user.last_name}",
+                borrower_name=request.borrower_name,
+                borrower_email=request.borrower_email,
+                borrower_phone=request.borrower_phone,
+                property_address=request.property_address,
+                lead_id=str(lead.id),
+            )
+    except Exception as e:
+        logger.error(f"Failed to send referral notification email: {e}")
 
     return ReferralDetail(
         id=referral.id,

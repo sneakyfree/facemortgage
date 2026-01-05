@@ -8,34 +8,6 @@ import { authApi } from '@/lib/api/endpoints';
 import { useAuthStore } from '@/stores/authStore';
 import type { TokenPair } from '@/types';
 
-// Quick login test accounts
-const QUICK_LOGIN_ACCOUNTS = [
-  {
-    label: 'Super Admin',
-    email: 'superadmin@facemortgage.com',
-    password: 'superadmin123',
-    color: 'bg-purple-600 hover:bg-purple-700',
-  },
-  {
-    label: 'Admin',
-    email: 'admin@facemortgage.com',
-    password: 'admin123',
-    color: 'bg-blue-600 hover:bg-blue-700',
-  },
-  {
-    label: 'User',
-    email: 'user@facemortgage.com',
-    password: 'user123',
-    color: 'bg-green-600 hover:bg-green-700',
-  },
-  {
-    label: 'Sales Rep',
-    email: 'sales@facemortgage.com',
-    password: 'sales123',
-    color: 'bg-orange-600 hover:bg-orange-700',
-  },
-];
-
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuthStore();
@@ -44,11 +16,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  const handleQuickLogin = (account: typeof QUICK_LOGIN_ACCOUNTS[0]) => {
-    setEmail(account.email);
-    setPassword(account.password);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,27 +186,6 @@ export default function LoginPage() {
           </div>
         </form>
 
-        {/* Quick Login Buttons */}
-        <div className="mt-8 border-t pt-6">
-          <p className="text-center text-sm text-gray-500 mb-4">
-            Quick Login (Development Only)
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {QUICK_LOGIN_ACCOUNTS.map((account) => (
-              <button
-                key={account.email}
-                type="button"
-                onClick={() => handleQuickLogin(account)}
-                className={`${account.color} text-white text-sm font-medium py-2 px-4 rounded-md transition-colors`}
-              >
-                {account.label}
-              </button>
-            ))}
-          </div>
-          <p className="text-center text-xs text-gray-400 mt-3">
-            Click a button to fill credentials, then click &quot;Sign in&quot;
-          </p>
-        </div>
       </div>
     </div>
   );

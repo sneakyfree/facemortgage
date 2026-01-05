@@ -3,9 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiClient } from '@/lib/api/client';
 import { getAnonymousSessionId, getDeviceFingerprint } from '@/lib/utils';
-
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { WS_BASE_URL } from '@/lib/config';
 
 export type CallState =
   | 'idle'
@@ -170,7 +168,7 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
         // Get auth token from localStorage
         const token = localStorage.getItem('access_token');
         const tokenParam = token ? `?token=${token}` : '';
-        const ws = new WebSocket(`${WS_URL}/ws/signaling/${roomId}/${userId}${tokenParam}`);
+        const ws = new WebSocket(`${WS_BASE_URL}/ws/signaling/${roomId}/${userId}${tokenParam}`);
 
         ws.onopen = () => {
           console.log('Signaling connected');

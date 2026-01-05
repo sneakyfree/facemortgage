@@ -3,8 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useGridStore } from '@/stores/gridStore';
 import type { ProfessionalStatus } from '@/types';
-
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
+import { WS_BASE_URL, config } from '@/lib/config';
 
 interface GridUpdateEvent {
   event: string;
@@ -113,7 +112,7 @@ export function useRealtimeGrid(options: UseRealtimeGridOptions = {}) {
       // Get auth token if available (grid can work without auth for anonymous browsing)
       const token = localStorage.getItem('access_token');
       const tokenParam = token ? `?token=${token}` : '';
-      wsRef.current = new WebSocket(`${WS_URL}/ws/grid${tokenParam}`);
+      wsRef.current = new WebSocket(`${WS_BASE_URL}/ws/grid${tokenParam}`);
 
       wsRef.current.onopen = () => {
         console.log('Grid WebSocket connected');
@@ -126,8 +125,8 @@ export function useRealtimeGrid(options: UseRealtimeGridOptions = {}) {
         console.log('Grid WebSocket closed:', event.code, event.reason);
 
         // Attempt reconnection with exponential backoff
-        if (reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+        if (reconnectAttempts.current < config.ws.reconnectAttempts) {
+          const delay = Math.min(config.ws.reconnectDelay * Math.pow(2, reconnectAttempts.current), 30000);
           reconnectAttempts.current++;
 
           console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current})`);

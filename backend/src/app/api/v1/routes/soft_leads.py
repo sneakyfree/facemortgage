@@ -16,7 +16,10 @@ from src.app.core.dependencies import DbSession, CurrentUser
 from src.app.models.soft_lead import SoftLead, SoftLeadStatus
 from src.app.models.professional import ProfessionalProfile, ProfessionalStatus
 from src.app.models.lead import Lead, LeadStatus
+from src.app.services.email_service import get_email_service
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -99,8 +102,15 @@ async def get_matched(
     else:
         message = "We've received your request! A professional will reach out within 24 hours."
 
-    # TODO: Send confirmation email
-    # send_get_matched_confirmation.delay(email=request.email, name=request.name)
+    # Send confirmation email to borrower
+    try:
+        email_service = get_email_service()
+        await email_service.send_get_matched_confirmation(
+            email=request.email,
+            name=request.name,
+        )
+    except Exception as e:
+        logger.error(f"Failed to send get-matched confirmation email: {e}")
 
     return GetMatchedResponse(
         success=True,
@@ -321,11 +331,20 @@ async def _auto_match_soft_lead(db: DbSession, soft_lead: SoftLead) -> bool:
         soft_lead.status = SoftLeadStatus.MATCHED
         await db.commit()
 
-        # TODO: Notify professional of new matched lead
-        # send_new_soft_lead_notification.delay(
-        #     professional_email=best_match.user.email,
-        #     lead_name=soft_lead.name,
-        # )
+        # Notify professional of new matched lead
+        try:
+            email_service = get_email_service()
+            await email_service.send_new_lead_notification(
+                professional_email=best_match.user.email,
+                lead_name=soft_lead.name,
+                lead_email=soft_lead.email,
+                lead_phone=soft_lead.phone,
+                loan_purpose=soft_lead.loan_purpose,
+                source="Get Matched",
+                lead_id=str(soft_lead.id),
+            )
+        except Exception as e:
+            logger.error(f"Failed to send new lead notification to professional: {e}")
 
         return True
 

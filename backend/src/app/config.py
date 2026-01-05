@@ -1,4 +1,8 @@
+import os
+import secrets
+import warnings
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from functools import lru_cache
 from typing import Optional
 
@@ -8,6 +12,13 @@ class Settings(BaseSettings):
     app_name: str = "FaceMortgage API"
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
+    environment: str = "development"  # development, staging, production
+    log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+    # Sentry (Error Tracking)
+    sentry_dsn: Optional[str] = None
+    sentry_traces_sample_rate: float = 0.1  # 10% of transactions for performance monitoring
+    sentry_profiles_sample_rate: float = 0.1  # 10% of sampled transactions for profiling
 
     # Database
     database_url: str = "postgresql+asyncpg://facemortgage:facemortgage_dev@localhost:5432/facemortgage"
@@ -17,14 +28,50 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = "redis://localhost:6379/0"
 
-    # Security
-    secret_key: str = "your-secret-key-change-in-production"
+    # Security - SECRET_KEY must be set via environment variable
+    secret_key: str = ""
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
-    # CORS
+    @field_validator("secret_key", mode="before")
+    @classmethod
+    def validate_secret_key(cls, v: str) -> str:
+        """Validate secret key is strong enough for production."""
+        # Check if running in production without a proper secret key
+        env = os.getenv("ENVIRONMENT", "development")
+
+        if not v or v in ("", "your-secret-key-change-in-production", "dev-secret-key-change-in-production-12345"):
+            if env == "production":
+                raise ValueError(
+                    "SECRET_KEY must be set to a strong random value in production. "
+                    "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+                )
+            # Generate a random key for development
+            warnings.warn(
+                "SECRET_KEY not set - using auto-generated key. "
+                "This is fine for development but must be set for production.",
+                UserWarning
+            )
+            return secrets.token_urlsafe(64)
+
+        if len(v) < 32:
+            if env == "production":
+                raise ValueError("SECRET_KEY must be at least 32 characters long for production")
+            warnings.warn("SECRET_KEY is less than 32 characters - consider using a longer key", UserWarning)
+
+        return v
+
+    # CORS - configured via environment for flexibility
     cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def validate_cors_origins(cls, v):
+        """Parse CORS origins from comma-separated string if needed."""
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
 
     # Stripe
     stripe_secret_key: Optional[str] = None
@@ -46,6 +93,12 @@ class Settings(BaseSettings):
     turn_server_url: Optional[str] = None
     turn_server_username: Optional[str] = None
     turn_server_credential: Optional[str] = None
+
+    # LiveKit (optional - for scalable video infrastructure)
+    livekit_url: Optional[str] = None  # wss://your-project.livekit.cloud
+    livekit_api_key: Optional[str] = None
+    livekit_api_secret: Optional[str] = None
+    use_livekit: bool = False  # Toggle between custom WebRTC and LiveKit
 
     # Email (SendGrid)
     sendgrid_api_key: Optional[str] = None

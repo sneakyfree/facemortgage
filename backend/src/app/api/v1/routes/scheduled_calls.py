@@ -15,7 +15,11 @@ from sqlalchemy.orm import selectinload
 from src.app.core.dependencies import DbSession, CurrentUserOptional, CurrentUser
 from src.app.models.scheduled_call import ScheduledCall, ScheduledCallStatus
 from src.app.models.professional import ProfessionalProfile
+from src.app.services.email_service import get_email_service
+import asyncio
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -118,17 +122,49 @@ async def schedule_call(
     await db.commit()
     await db.refresh(scheduled_call)
 
-    # TODO: Send confirmation emails (async task)
-    # send_scheduled_call_confirmation.delay(...)
-    # send_professional_scheduled_call_notification.delay(...)
-
     professional_name = f"{professional.user.first_name} {professional.user.last_name}"
+
+    # Send confirmation emails
+    email_service = get_email_service()
+    confirmation_sent = False
+
+    try:
+        # Format date/time for display
+        scheduled_date = scheduled_call.scheduled_for.strftime("%B %d, %Y")
+        scheduled_time = scheduled_call.scheduled_for.strftime("%I:%M %p")
+
+        # Send emails concurrently
+        borrower_email_task = email_service.send_scheduled_call_confirmation(
+            borrower_email=request.email,
+            borrower_name=request.name,
+            professional_name=professional_name,
+            scheduled_date=scheduled_date,
+            scheduled_time=scheduled_time,
+            timezone=request.timezone,
+        )
+        professional_email_task = email_service.send_scheduled_call_notification(
+            professional_email=professional.user.email,
+            borrower_name=request.name,
+            borrower_email=request.email,
+            scheduled_date=scheduled_date,
+            scheduled_time=scheduled_time,
+            timezone=request.timezone,
+            notes=request.notes,
+        )
+
+        results = await asyncio.gather(borrower_email_task, professional_email_task, return_exceptions=True)
+        confirmation_sent = all(r is True for r in results if not isinstance(r, Exception))
+
+        if not confirmation_sent:
+            logger.warning(f"Some confirmation emails failed for scheduled call {scheduled_call.id}")
+    except Exception as e:
+        logger.error(f"Failed to send confirmation emails for scheduled call {scheduled_call.id}: {e}")
 
     return ScheduleCallResponse(
         id=scheduled_call.id,
         scheduled_for=scheduled_call.scheduled_for,
         professional_name=professional_name,
-        confirmation_sent=True,  # Would be actual status from email task
+        confirmation_sent=confirmation_sent,
     )
 
 

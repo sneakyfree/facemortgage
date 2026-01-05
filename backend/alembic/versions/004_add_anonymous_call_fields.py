@@ -1,19 +1,21 @@
 """Add anonymous call support fields to video_calls table.
 
 Revision ID: 004
-Revises: 003_add_user_is_admin
+Revises: 003
 Create Date: 2024-12-31
 
 """
+from typing import Sequence, Union
+
 from alembic import op
 import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '004_add_anonymous_call_fields'
-down_revision = '003_add_user_is_admin'
-branch_labels = None
-depends_on = None
+revision: str = '004'
+down_revision: Union[str, None] = '003'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:

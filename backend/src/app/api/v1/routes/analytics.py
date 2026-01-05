@@ -218,7 +218,7 @@ def _format_relative_time(dt: datetime) -> str:
 
 @router.get("/dashboard", response_model=AnalyticsDashboard)
 async def get_analytics_dashboard(
-    period: str = Query("30d", regex="^(7d|30d|90d|12m)$"),
+    period: str = Query("30d", pattern="^(7d|30d|90d|12m)$"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -267,7 +267,7 @@ async def get_analytics_dashboard(
 
 @router.get("/performance", response_model=PerformanceMetrics)
 async def get_performance_metrics(
-    period: str = Query("30d", regex="^(7d|30d|90d|12m)$"),
+    period: str = Query("30d", pattern="^(7d|30d|90d|12m)$"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

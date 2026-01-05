@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import String, Boolean, DateTime, Enum as SQLEnum, ForeignKey, Integer
+from sqlalchemy import String, Boolean, DateTime, Enum as SQLEnum, ForeignKey, Integer, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
 
 from src.app.core.database import Base
 
@@ -56,10 +56,12 @@ class VideoCall(Base):
     borrower_camera_on: Mapped[bool] = mapped_column(Boolean, default=False)
     professional_camera_on: Mapped[bool] = mapped_column(Boolean, default=True)
     recording_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    ice_servers_used: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Using JSON instead of JSONB for SQLite test compatibility
+    ice_servers_used: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Quality Metrics
-    quality_metrics: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Using JSON instead of JSONB for SQLite test compatibility
+    quality_metrics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Anonymous caller support
     anonymous_session_id: Mapped[str | None] = mapped_column(

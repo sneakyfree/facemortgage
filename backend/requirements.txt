@@ -28,6 +28,10 @@ email-validator==2.1.0.post1
 # WebSockets
 websockets==12.0
 
+# LiveKit (optional - for scalable video infrastructure)
+livekit==0.11.1
+livekit-api==0.4.2
+
 # Stripe
 stripe==8.2.0
 
@@ -47,6 +51,12 @@ aiofiles==23.2.1
 # Utils
 python-dotenv==1.0.1
 orjson==3.9.13
+
+# Rate Limiting
+slowapi==0.1.9
+
+# Monitoring & Error Tracking
+sentry-sdk[fastapi]==1.40.0
 
 # Development & Testing
 pytest==8.0.0

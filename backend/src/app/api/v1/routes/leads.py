@@ -46,8 +46,8 @@ async def get_professional_profile(user: User, db: AsyncSession) -> Professional
 async def list_leads(
     status: Optional[LeadStatus] = None,
     search: Optional[str] = None,
-    sort_by: str = Query("created_at", regex="^(created_at|updated_at|estimated_loan_amount|next_followup_at)$"),
-    sort_order: str = Query("desc", regex="^(asc|desc)$"),
+    sort_by: str = Query("created_at", pattern="^(created_at|updated_at|estimated_loan_amount|next_followup_at)$"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     user: User = Depends(get_current_user),

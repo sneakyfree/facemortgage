@@ -8,9 +8,9 @@ import uuid
 import secrets
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import String, DateTime, ForeignKey, Text, Enum as SQLEnum, Boolean, Numeric
+from sqlalchemy import String, DateTime, ForeignKey, Text, Enum as SQLEnum, Boolean, Numeric, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
 
 from src.app.core.database import Base
 
@@ -83,7 +83,8 @@ class Partnership(Base):
     widget_token: Mapped[str | None] = mapped_column(
         String(64), nullable=True, unique=True
     )
-    widget_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Using JSON instead of JSONB for SQLite test compatibility
+    widget_config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(

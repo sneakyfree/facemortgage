@@ -2,9 +2,9 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Integer, Numeric, Text, Enum as SQLEnum
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Integer, Numeric, Text, Enum as SQLEnum, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
+from sqlalchemy.dialects.postgresql import UUID
 
 from src.app.core.database import Base
 from src.app.models.professional import SubscriptionTier
@@ -36,7 +36,8 @@ class SubscriptionPlan(Base):
     video_recording_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     custom_branding_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    features: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Using JSON instead of JSONB for SQLite test compatibility
+    features: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     stripe_price_id_monthly: Mapped[str | None] = mapped_column(String(100), nullable=True)
     stripe_price_id_annual: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -168,10 +169,12 @@ class PlacementBid(Base):
     bid_per_click: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
 
     # Targeting
-    target_counties: Mapped[list | None] = mapped_column(ARRAY(Integer), nullable=True)
-    target_languages: Mapped[list | None] = mapped_column(ARRAY(Integer), nullable=True)
-    target_specialties: Mapped[list | None] = mapped_column(ARRAY(Integer), nullable=True)
-    target_hours: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Using JSON instead of ARRAY for SQLite test compatibility
+    target_counties: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    target_languages: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    target_specialties: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    # Using JSON instead of JSONB for SQLite test compatibility
+    target_hours: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Budget Tracking
     daily_spent: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
@@ -209,7 +212,8 @@ class BillingTransaction(Base):
     stripe_invoice_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    extra_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Using JSON instead of JSONB for SQLite test compatibility
+    extra_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False

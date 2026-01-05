@@ -3,9 +3,9 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import List
-from sqlalchemy import String, Boolean, DateTime, Enum as SQLEnum, ForeignKey, Integer, Numeric, Text
+from sqlalchemy import String, Boolean, DateTime, Enum as SQLEnum, ForeignKey, Integer, Numeric, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
 
 from src.app.core.database import Base
 
@@ -47,7 +47,8 @@ class ProfessionalProfile(Base):
     nmls_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Location
-    office_address: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Using JSON instead of JSONB for SQLite test compatibility
+    office_address: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     timezone: Mapped[str] = mapped_column(String(50), default="America/New_York")
 
     # Video Settings
