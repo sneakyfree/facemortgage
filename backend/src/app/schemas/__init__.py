@@ -16,6 +16,19 @@ from src.app.schemas.professional import (
     SpecialtyResponse,
     LanguageResponse,
 )
+from src.app.schemas.errors import (
+    ErrorResponse,
+    ValidationErrorResponse,
+    AuthenticationErrorResponse,
+    AuthorizationErrorResponse,
+    NotFoundErrorResponse,
+    RateLimitErrorResponse,
+    ServerErrorResponse,
+    ConflictErrorResponse,
+    ServiceUnavailableErrorResponse,
+    ERROR_RESPONSES,
+    get_error_responses,
+)
 
 __all__ = [
     "UserCreate",
@@ -32,4 +45,16 @@ __all__ = [
     "ProfessionalStatsResponse",
     "SpecialtyResponse",
     "LanguageResponse",
+    # Error schemas
+    "ErrorResponse",
+    "ValidationErrorResponse",
+    "AuthenticationErrorResponse",
+    "AuthorizationErrorResponse",
+    "NotFoundErrorResponse",
+    "RateLimitErrorResponse",
+    "ServerErrorResponse",
+    "ConflictErrorResponse",
+    "ServiceUnavailableErrorResponse",
+    "ERROR_RESPONSES",
+    "get_error_responses",
 ]

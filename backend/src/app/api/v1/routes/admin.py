@@ -6,12 +6,13 @@ Requires admin role for access.
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
 from src.app.core.auth import get_current_user
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.core.database import get_db
 from src.app.models.user import User, UserType
 from src.app.models.professional import ProfessionalProfile, ProfessionalStatus
@@ -101,7 +102,9 @@ class ProfessionalListResponse(BaseModel):
 
 
 @router.get("/stats", response_model=PlatformStats)
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_platform_stats(
+    request: Request,
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -223,7 +226,9 @@ async def get_platform_stats(
 
 
 @router.get("/users", response_model=UserListResponse)
+@limiter.limit(RATE_LIMITS["api_read"])
 async def list_users(
+    request: Request,
     search: Optional[str] = None,
     user_type: Optional[str] = None,
     is_active: Optional[bool] = None,
@@ -280,7 +285,9 @@ async def list_users(
 
 
 @router.get("/professionals", response_model=ProfessionalListResponse)
+@limiter.limit(RATE_LIMITS["api_read"])
 async def list_professionals(
+    request: Request,
     search: Optional[str] = None,
     status: Optional[str] = None,
     tier: Optional[str] = None,
@@ -344,7 +351,9 @@ async def list_professionals(
 
 
 @router.patch("/users/{user_id}/status")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def toggle_user_status(
+    request: Request,
     user_id: str,
     is_active: bool,
     admin: User = Depends(require_admin),
@@ -366,7 +375,9 @@ async def toggle_user_status(
 
 
 @router.patch("/professionals/{professional_id}/featured")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def toggle_featured(
+    request: Request,
     professional_id: str,
     is_featured: bool,
     admin: User = Depends(require_admin),

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useVideoCall, CallState } from '@/hooks/useVideoCall';
 import { callsApi } from '@/lib/api/endpoints';
+import { useFocusTrap, useEscapeKey } from '@/hooks/useFocusTrap';
 import CallControls from './CallControls';
 import PostCallRating from './PostCallRating';
 import LeadCaptureModal from './LeadCaptureModal';
@@ -43,6 +44,16 @@ export default function VideoCallModal({
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const modalRef = useFocusTrap<HTMLDivElement>(true);
+
+  // Only allow Escape to close during error states, not during active call
+  const canCloseWithEscape = ['failed', 'declined', 'missed'].includes(callState);
+  const handleEscape = useCallback(() => {
+    if (canCloseWithEscape) {
+      onClose();
+    }
+  }, [canCloseWithEscape, onClose]);
+  useEscapeKey(canCloseWithEscape, handleEscape);
 
   // Start call on mount
   useEffect(() => {
@@ -131,14 +142,23 @@ export default function VideoCallModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <div
+      ref={modalRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="video-call-title"
+      aria-describedby="video-call-status"
+      className="fixed inset-0 z-50 bg-black flex flex-col"
+    >
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/70 to-transparent">
         <div className="flex items-center justify-between text-white">
           <div>
-            <h2 className="text-xl font-semibold">{professionalName}</h2>
+            <h2 id="video-call-title" className="text-xl font-semibold">{professionalName}</h2>
             {getStatusMessage(callState) && (
-              <p className="text-sm text-gray-300">{getStatusMessage(callState)}</p>
+              <p id="video-call-status" className="text-sm text-gray-300" aria-live="polite">
+                {getStatusMessage(callState)}
+              </p>
             )}
           </div>
           {callState === 'active' && (
@@ -156,6 +176,7 @@ export default function VideoCallModal({
           ref={remoteVideoRef}
           autoPlay
           playsInline
+          aria-label={`Video from ${professionalName}`}
           className="w-full h-full object-cover"
         />
 
@@ -186,6 +207,7 @@ export default function VideoCallModal({
             autoPlay
             playsInline
             muted
+            aria-label="Your video preview"
             className={`w-full h-full object-cover ${isCameraOff ? 'hidden' : ''}`}
           />
           {isCameraOff && (
@@ -208,12 +230,15 @@ export default function VideoCallModal({
 
       {/* Error/Status Overlay */}
       {['failed', 'declined', 'missed'].includes(callState) && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+        <div
+          role="alert"
+          className="absolute inset-0 flex items-center justify-center bg-black/80"
+        >
           <div className="text-center text-white">
             <p className="text-xl mb-4">{getStatusMessage(callState)}</p>
             <button
               onClick={onClose}
-              className="px-6 py-2 bg-white text-black rounded-full font-medium hover:bg-gray-200"
+              className="px-6 py-2 bg-white text-black rounded-full font-medium hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
             >
               Close
             </button>

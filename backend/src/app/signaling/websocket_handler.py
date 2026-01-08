@@ -128,6 +128,7 @@ async def signaling_handler(
     websocket: WebSocket,
     room_id: str,
     user_id: str,
+    subprotocol: str | None = None,
 ):
     """
     WebSocket handler for WebRTC signaling.
@@ -144,7 +145,7 @@ async def signaling_handler(
     - ice_candidate: ICE candidate
     - call_action: answer, decline, end, mute, camera_off
     """
-    await websocket.accept()
+    await websocket.accept(subprotocol=subprotocol)
 
     signaling = get_signaling_service()
     presence = get_presence_service()

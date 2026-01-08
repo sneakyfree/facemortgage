@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api/client';
 import { authApi } from '@/lib/api/endpoints';
 import { useAuthStore } from '@/stores/authStore';
-import type { TokenPair, UserType } from '@/types';
+import type { UserType } from '@/types';
 
 const userTypeOptions: { value: UserType; label: string; description: string }[] = [
   { value: 'borrower', label: 'Borrower', description: 'Looking for a mortgage professional' },
@@ -68,25 +68,17 @@ export default function RegisterPage() {
         user_type: formData.user_type,
       });
 
-      // Login to get tokens
-      const tokenResponse = await apiClient.post<TokenPair>('/auth/login', {
+      // Login - tokens are set as httpOnly cookies by the server
+      await apiClient.post('/auth/login', {
         email: formData.email,
         password: formData.password,
       });
 
-      const { access_token, refresh_token } = tokenResponse.data;
-
-      // Store tokens temporarily
-      localStorage.setItem('access_token', access_token);
-      if (refresh_token) {
-        localStorage.setItem('refresh_token', refresh_token);
-      }
-
-      // Fetch user profile
+      // Fetch user profile (cookie is automatically sent)
       const user = await authApi.getMe();
 
-      // Update auth store
-      login(user, access_token, refresh_token);
+      // Update auth store with user info (no tokens needed in client)
+      login(user);
 
       // Redirect based on user type
       if (user.user_type === 'borrower') {

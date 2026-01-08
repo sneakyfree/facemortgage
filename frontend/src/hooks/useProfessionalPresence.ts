@@ -36,7 +36,7 @@ export function useProfessionalPresence(options: UseProfessionalPresenceOptions 
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
 
-  const { user, getAccessToken } = useAuthStore();
+  const { user } = useAuthStore();
 
   const [state, setState] = useState<PresenceState>({
     isConnected: false,
@@ -114,8 +114,9 @@ export function useProfessionalPresence(options: UseProfessionalPresenceOptions 
 
     try {
       const professionalId = user.professional_profile.id;
-      const token = getAccessToken();
-      const url = `${WS_BASE_URL}/ws/presence/${professionalId}${token ? `?token=${token}` : ''}`;
+      // WebSocket URL - authentication is handled via httpOnly cookies
+      // The browser automatically sends cookies for same-origin WebSocket connections
+      const url = `${WS_BASE_URL}/ws/presence/${professionalId}`;
 
       wsRef.current = new WebSocket(url);
 
@@ -172,7 +173,7 @@ export function useProfessionalPresence(options: UseProfessionalPresenceOptions 
         error: 'Failed to connect',
       }));
     }
-  }, [user, getAccessToken, handleMessage, startHeartbeat, stopHeartbeat, onError]);
+  }, [user, handleMessage, startHeartbeat, stopHeartbeat, onError]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {

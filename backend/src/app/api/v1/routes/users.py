@@ -1,10 +1,11 @@
 import uuid
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, HTTPException, UploadFile, File, status, Request
 from pydantic import BaseModel
 from typing import Optional
 
 from src.app.core.dependencies import DbSession, CurrentUser
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.core.security import verify_password, get_password_hash
 from src.app.schemas.user import UserResponse, UserUpdate
 from src.app.services.storage import get_storage
@@ -27,13 +28,16 @@ class NotificationSettings(BaseModel):
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_my_profile(current_user: CurrentUser):
+@limiter.limit(RATE_LIMITS["api_read"])
+async def get_my_profile(request: Request, current_user: CurrentUser):
     """Get current user's profile"""
     return current_user
 
 
 @router.put("/me", response_model=UserResponse)
+@limiter.limit(RATE_LIMITS["api_write"])
 async def update_my_profile(
+    request: Request,
     updates: UserUpdate,
     current_user: CurrentUser,
     db: DbSession,
@@ -51,7 +55,9 @@ async def update_my_profile(
 
 
 @router.post("/me/password")
+@limiter.limit(RATE_LIMITS["sensitive"])
 async def change_password(
+    request: Request,
     password_change: PasswordChange,
     current_user: CurrentUser,
     db: DbSession,
@@ -83,7 +89,9 @@ async def change_password(
 
 
 @router.delete("/me")
+@limiter.limit(RATE_LIMITS["sensitive"])
 async def delete_my_account(
+    request: Request,
     current_user: CurrentUser,
     db: DbSession,
 ):
@@ -99,7 +107,8 @@ async def delete_my_account(
 
 
 @router.get("/me/notification-settings")
-async def get_notification_settings(current_user: CurrentUser):
+@limiter.limit(RATE_LIMITS["api_read"])
+async def get_notification_settings(request: Request, current_user: CurrentUser):
     """
     Get the user's notification preferences.
 
@@ -111,7 +120,9 @@ async def get_notification_settings(current_user: CurrentUser):
 
 
 @router.put("/me/notification-settings")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def update_notification_settings(
+    request: Request,
     settings: NotificationSettings,
     current_user: CurrentUser,
     db: DbSession,
@@ -129,7 +140,9 @@ MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5MB
 
 
 @router.post("/me/avatar")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def upload_avatar(
+    request: Request,
     current_user: CurrentUser,
     db: DbSession,
     file: UploadFile = File(..., description="Avatar image (JPEG, PNG, GIF, or WebP)"),
@@ -185,7 +198,9 @@ async def upload_avatar(
 
 
 @router.delete("/me/avatar")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def delete_avatar(
+    request: Request,
     current_user: CurrentUser,
     db: DbSession,
 ):

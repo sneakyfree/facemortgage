@@ -64,6 +64,9 @@ RATE_LIMITS = {
     "api_read": "100/minute",
     "api_write": "30/minute",
 
+    # Sensitive operations - strict limits (password change, account deletion)
+    "sensitive": "5/minute",
+
     # WebSocket connections
     "ws_connect": "10/minute",
 

@@ -24,7 +24,7 @@ from sqlalchemy.pool import NullPool
 from src.app.main import app
 from src.app.core.database import Base, get_db
 from src.app.core.auth import get_current_user, create_access_token
-from src.app.core.dependencies import get_current_user_optional
+from src.app.core.dependencies import get_current_user_optional, require_professional
 from src.app.models.user import User, UserType
 from src.app.models.professional import ProfessionalProfile, ProfessionalStatus, SubscriptionTier
 from src.app.models.call import VideoCall, CallStatus
@@ -93,16 +93,22 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
 
 @pytest_asyncio.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """Create a test HTTP client."""
+    """Create a test HTTP client with CSRF token support."""
 
     async def override_get_db():
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
 
+    # Generate a CSRF token for testing
+    import secrets
+    csrf_token = secrets.token_urlsafe(32)
+
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
+        cookies={"csrf_token": csrf_token},
+        headers={"X-CSRF-Token": csrf_token},
     ) as client:
         yield client
 
@@ -111,13 +117,24 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 # ==================== User Fixtures ====================
 
+def _generate_password_hash(password: str) -> str:
+    """Generate password hash using bcrypt directly for test fixtures."""
+    import bcrypt
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+# Pre-generate password hash for "testpass123" at module load
+_TEST_PASSWORD = "testpass123"
+_TEST_PASSWORD_HASH = _generate_password_hash(_TEST_PASSWORD)
+
+
 @pytest_asyncio.fixture
 async def test_user(db_session: AsyncSession) -> User:
     """Create a test borrower user."""
     user = User(
         id=uuid.uuid4(),
         email="borrower@test.com",
-        password_hash="$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.rSe6o2J1G7GgjC",  # "testpass123"
+        password_hash=_TEST_PASSWORD_HASH,  # "testpass123"
         first_name="Test",
         last_name="Borrower",
         user_type=UserType.BORROWER,
@@ -138,7 +155,7 @@ async def test_professional_user(db_session: AsyncSession) -> User:
     user = User(
         id=uuid.uuid4(),
         email="pro@test.com",
-        password_hash="$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.rSe6o2J1G7GgjC",
+        password_hash=_TEST_PASSWORD_HASH,  # "testpass123"
         first_name="Test",
         last_name="Professional",
         user_type=UserType.LOAN_OFFICER,
@@ -159,7 +176,7 @@ async def test_admin_user(db_session: AsyncSession) -> User:
     user = User(
         id=uuid.uuid4(),
         email="admin@test.com",
-        password_hash="$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.rSe6o2J1G7GgjC",
+        password_hash=_TEST_PASSWORD_HASH,  # "testpass123"
         first_name="Admin",
         last_name="User",
         user_type=UserType.BORROWER,
@@ -215,7 +232,7 @@ async def test_offline_professional(
     user = User(
         id=uuid.uuid4(),
         email="offline_pro@test.com",
-        password_hash="$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.rSe6o2J1G7GgjC",
+        password_hash=_TEST_PASSWORD_HASH,  # "testpass123"
         first_name="Offline",
         last_name="Professional",
         user_type=UserType.LOAN_OFFICER,
@@ -529,5 +546,9 @@ async def authenticated_professional_client(
     async def override_get_current_user():
         return test_professional_user
 
+    async def override_require_professional():
+        return test_professional_user
+
     app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[require_professional] = override_require_professional
     yield client

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { X, UserPlus, CheckCircle } from 'lucide-react';
 import { partnershipsApi, InvitePartnerRequest } from '@/lib/api/endpoints';
+import { useFocusTrap, useEscapeKey } from '@/hooks/useFocusTrap';
 
 interface InvitePartnerModalProps {
   onClose: () => void;
@@ -22,6 +23,11 @@ export default function InvitePartnerModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Accessibility: Focus trap and escape key handling
+  const modalRef = useFocusTrap<HTMLDivElement>(true);
+  const handleEscape = useCallback(() => onClose(), [onClose]);
+  useEscapeKey(true, handleEscape);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,9 +51,14 @@ export default function InvitePartnerModal({
   if (isSuccess) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-        <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center">
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Invitation Sent!</h2>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="invite-success-title"
+          className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center"
+        >
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" aria-hidden="true" />
+          <h2 id="invite-success-title" className="text-2xl font-bold text-gray-900 mb-2">Invitation Sent!</h2>
           <p className="text-gray-600">
             {formData.realtor_name} will receive an email with instructions to join your partnership.
           </p>
@@ -58,24 +69,34 @@ export default function InvitePartnerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="invite-modal-title"
+        className="bg-white rounded-2xl p-6 max-w-md w-full mx-4"
+      >
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
-              <UserPlus className="w-6 h-6 text-blue-600" />
+              <UserPlus className="w-6 h-6 text-blue-600" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Invite Partner</h2>
+              <h2 id="invite-modal-title" className="text-xl font-bold text-gray-900">Invite Partner</h2>
               <p className="text-sm text-gray-600">Add a realtor to your network</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
+          <button
+            onClick={onClose}
+            aria-label="Close modal"
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-6 h-6" aria-hidden="true" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+          <div role="alert" className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
             {error}
           </div>
         )}

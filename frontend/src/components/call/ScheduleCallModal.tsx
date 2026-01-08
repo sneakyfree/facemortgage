@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { X, Calendar, Clock, CheckCircle } from 'lucide-react';
 import { scheduledCallsApi, ScheduleCallRequest } from '@/lib/api/endpoints';
+import { useFocusTrap, useEscapeKey } from '@/hooks/useFocusTrap';
 
 interface ScheduleCallModalProps {
   professional: {
@@ -29,6 +30,11 @@ export default function ScheduleCallModal({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Accessibility: Focus trap and escape key handling
+  const modalRef = useFocusTrap<HTMLDivElement>(true);
+  const handleEscape = useCallback(() => onClose(), [onClose]);
+  useEscapeKey(true, handleEscape);
 
   // Generate available dates (next 7 days, excluding today)
   const getAvailableDates = () => {
@@ -103,9 +109,14 @@ export default function ScheduleCallModal({
   if (step === 'success') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-        <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center">
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Call Scheduled!</h2>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="success-title"
+          className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center"
+        >
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" aria-hidden="true" />
+          <h2 id="success-title" className="text-2xl font-bold text-gray-900 mb-2">Call Scheduled!</h2>
           <p className="text-gray-600 mb-4">
             Your call with {professional.name} is scheduled for{' '}
             <strong>
@@ -132,18 +143,28 @@ export default function ScheduleCallModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-white rounded-2xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="schedule-modal-title"
+        className="bg-white rounded-2xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 id="schedule-modal-title" className="text-xl font-bold text-gray-900">
               Schedule a Call
             </h2>
             <p className="text-gray-600">
               with {professional.name}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
+          <button
+            onClick={onClose}
+            aria-label="Close modal"
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-6 h-6" aria-hidden="true" />
           </button>
         </div>
 
@@ -154,7 +175,7 @@ export default function ScheduleCallModal({
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+          <div role="alert" className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
             {error}
           </div>
         )}
@@ -163,7 +184,7 @@ export default function ScheduleCallModal({
           <div className="space-y-4">
             <div>
               <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                <Calendar className="w-4 h-4 mr-1" />
+                <Calendar className="w-4 h-4 mr-1" aria-hidden="true" />
                 Select a Date
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -190,7 +211,7 @@ export default function ScheduleCallModal({
 
             <div>
               <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                <Clock className="w-4 h-4 mr-1" />
+                <Clock className="w-4 h-4 mr-1" aria-hidden="true" />
                 Select a Time
               </label>
               <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { X, Send, CheckCircle } from 'lucide-react';
 import { partnershipsApi, SubmitReferralRequest, PartnershipDetail } from '@/lib/api/endpoints';
+import { useFocusTrap, useEscapeKey } from '@/hooks/useFocusTrap';
 
 interface ReferralModalProps {
   partnership: PartnershipDetail;
@@ -28,6 +29,11 @@ export default function ReferralModal({
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Accessibility: Focus trap and escape key handling
+  const modalRef = useFocusTrap<HTMLDivElement>(true);
+  const handleEscape = useCallback(() => onClose(), [onClose]);
+  useEscapeKey(true, handleEscape);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -50,9 +56,14 @@ export default function ReferralModal({
   if (isSuccess) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-        <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center">
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Referral Sent!</h2>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="referral-success-title"
+          className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center"
+        >
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" aria-hidden="true" />
+          <h2 id="referral-success-title" className="text-2xl font-bold text-gray-900 mb-2">Referral Sent!</h2>
           <p className="text-gray-600">
             {partnership.loan_officer_name} has been notified and will reach out to {formData.borrower_name} shortly.
           </p>
@@ -63,24 +74,34 @@ export default function ReferralModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-white rounded-2xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="referral-modal-title"
+        className="bg-white rounded-2xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
-              <Send className="w-6 h-6 text-green-600" />
+              <Send className="w-6 h-6 text-green-600" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Send Referral</h2>
+              <h2 id="referral-modal-title" className="text-xl font-bold text-gray-900">Send Referral</h2>
               <p className="text-sm text-gray-600">to {partnership.loan_officer_name}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
+          <button
+            onClick={onClose}
+            aria-label="Close modal"
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-6 h-6" aria-hidden="true" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+          <div role="alert" className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
             {error}
           </div>
         )}

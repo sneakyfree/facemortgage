@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusTrap, useEscapeKey } from '@/hooks/useFocusTrap';
 
 interface PostCallRatingProps {
   professionalName: string;
@@ -19,6 +20,23 @@ export default function PostCallRating({
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Accessibility: Focus trap and escape key handling
+  const modalRef = useFocusTrap<HTMLDivElement>(true);
+  const handleEscape = useCallback(() => onSkip(), [onSkip]);
+  useEscapeKey(true, handleEscape);
+
+  // Handle keyboard navigation in rating stars
+  const handleStarKeyDown = (e: React.KeyboardEvent, star: number) => {
+    if (e.key === 'ArrowRight' && star < 5) {
+      setRating(star + 1);
+    } else if (e.key === 'ArrowLeft' && star > 1) {
+      setRating(star - 1);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setRating(star);
+    }
+  };
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -56,7 +74,13 @@ export default function PostCallRating({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rating-title"
+        className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl"
+      >
         {/* Header */}
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-green-100 rounded-full mx-auto mb-4 flex items-center justify-center">
@@ -65,6 +89,7 @@ export default function PostCallRating({
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -74,7 +99,7 @@ export default function PostCallRating({
               />
             </svg>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900">Call Ended</h2>
+          <h2 id="rating-title" className="text-xl font-semibold text-gray-900">Call Ended</h2>
           <p className="text-gray-500 mt-1">
             You spoke with {professionalName} for {formatDuration(callDuration)}
           </p>
@@ -82,17 +107,25 @@ export default function PostCallRating({
 
         {/* Rating Stars */}
         <div className="mb-6">
-          <p className="text-center text-gray-700 mb-3">
+          <p id="rating-question" className="text-center text-gray-700 mb-3">
             How was your experience?
           </p>
-          <div className="flex justify-center space-x-2">
+          <div
+            role="radiogroup"
+            aria-labelledby="rating-question"
+            className="flex justify-center space-x-2"
+          >
             {[1, 2, 3, 4, 5].map((star) => (
               <button
                 key={star}
+                role="radio"
+                aria-checked={rating === star}
+                aria-label={`${star} star${star > 1 ? 's' : ''} - ${getRatingLabel(star)}`}
                 onClick={() => setRating(star)}
+                onKeyDown={(e) => handleStarKeyDown(e, star)}
                 onMouseEnter={() => setHoveredRating(star)}
                 onMouseLeave={() => setHoveredRating(0)}
-                className="focus:outline-none transition-transform hover:scale-110"
+                className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded transition-transform hover:scale-110"
               >
                 <svg
                   className={`w-10 h-10 ${
@@ -103,6 +136,7 @@ export default function PostCallRating({
                   viewBox="0 0 24 24"
                   fill={star <= (hoveredRating || rating) ? 'currentColor' : 'none'}
                   stroke="currentColor"
+                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"

@@ -12,6 +12,8 @@ from src.app.presence.websocket_handler import (
     professional_presence_handler,
     grid_updates_handler,
     redis_subscriber_task,
+    WebSocketRateLimiter,
+    ws_rate_limiter,
 )
 
 __all__ = [
@@ -23,4 +25,6 @@ __all__ = [
     "professional_presence_handler",
     "grid_updates_handler",
     "redis_subscriber_task",
+    "WebSocketRateLimiter",
+    "ws_rate_limiter",
 ]

@@ -23,26 +23,32 @@ export default function CallControls({
   const canEndCall = ['initiating', 'ringing', 'connecting', 'active'].includes(callState);
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/70 to-transparent">
+    <div
+      className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/70 to-transparent"
+      role="toolbar"
+      aria-label="Call controls"
+    >
       <div className="flex items-center justify-center space-x-6">
         {/* Mute Button */}
         <button
           onClick={onToggleMute}
           disabled={!isCallActive}
+          aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+          aria-pressed={isMuted}
           className={`
             w-14 h-14 rounded-full flex items-center justify-center transition-all
+            focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black
             ${isMuted
               ? 'bg-red-500 hover:bg-red-600'
               : 'bg-gray-700 hover:bg-gray-600'
             }
             ${!isCallActive ? 'opacity-50 cursor-not-allowed' : ''}
           `}
-          title={isMuted ? 'Unmute' : 'Mute'}
         >
           {isMuted ? (
-            <MicOffIcon className="w-6 h-6 text-white" />
+            <MicOffIcon className="w-6 h-6 text-white" aria-hidden="true" />
           ) : (
-            <MicIcon className="w-6 h-6 text-white" />
+            <MicIcon className="w-6 h-6 text-white" aria-hidden="true" />
           )}
         </button>
 
@@ -50,34 +56,37 @@ export default function CallControls({
         <button
           onClick={onEndCall}
           disabled={!canEndCall}
+          aria-label="End call"
           className={`
             w-16 h-16 rounded-full flex items-center justify-center transition-all
+            focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black
             bg-red-600 hover:bg-red-700
             ${!canEndCall ? 'opacity-50 cursor-not-allowed' : ''}
           `}
-          title="End Call"
         >
-          <PhoneIcon className="w-8 h-8 text-white rotate-[135deg]" />
+          <PhoneIcon className="w-8 h-8 text-white rotate-[135deg]" aria-hidden="true" />
         </button>
 
         {/* Camera Button */}
         <button
           onClick={onToggleCamera}
           disabled={!isCallActive}
+          aria-label={isCameraOff ? 'Turn on camera' : 'Turn off camera'}
+          aria-pressed={isCameraOff}
           className={`
             w-14 h-14 rounded-full flex items-center justify-center transition-all
+            focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black
             ${isCameraOff
               ? 'bg-red-500 hover:bg-red-600'
               : 'bg-gray-700 hover:bg-gray-600'
             }
             ${!isCallActive ? 'opacity-50 cursor-not-allowed' : ''}
           `}
-          title={isCameraOff ? 'Turn On Camera' : 'Turn Off Camera'}
         >
           {isCameraOff ? (
-            <CameraOffIcon className="w-6 h-6 text-white" />
+            <CameraOffIcon className="w-6 h-6 text-white" aria-hidden="true" />
           ) : (
-            <CameraIcon className="w-6 h-6 text-white" />
+            <CameraIcon className="w-6 h-6 text-white" aria-hidden="true" />
           )}
         </button>
       </div>
@@ -85,10 +94,16 @@ export default function CallControls({
   );
 }
 
+// Icon props type
+interface IconProps {
+  className?: string;
+  'aria-hidden'?: boolean | 'true' | 'false';
+}
+
 // Icons
-function MicIcon({ className }: { className?: string }) {
+function MicIcon({ className, 'aria-hidden': ariaHidden }: IconProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden={ariaHidden}>
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -99,9 +114,9 @@ function MicIcon({ className }: { className?: string }) {
   );
 }
 
-function MicOffIcon({ className }: { className?: string }) {
+function MicOffIcon({ className, 'aria-hidden': ariaHidden }: IconProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden={ariaHidden}>
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -118,9 +133,9 @@ function MicOffIcon({ className }: { className?: string }) {
   );
 }
 
-function CameraIcon({ className }: { className?: string }) {
+function CameraIcon({ className, 'aria-hidden': ariaHidden }: IconProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden={ariaHidden}>
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -131,9 +146,9 @@ function CameraIcon({ className }: { className?: string }) {
   );
 }
 
-function CameraOffIcon({ className }: { className?: string }) {
+function CameraOffIcon({ className, 'aria-hidden': ariaHidden }: IconProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden={ariaHidden}>
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -144,9 +159,9 @@ function CameraOffIcon({ className }: { className?: string }) {
   );
 }
 
-function PhoneIcon({ className }: { className?: string }) {
+function PhoneIcon({ className, 'aria-hidden': ariaHidden }: IconProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden={ariaHidden}>
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

@@ -6,11 +6,12 @@ Handles registering and unregistering mobile devices for push notifications.
 from datetime import datetime
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from src.app.core.dependencies import DbSession, CurrentUser
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.user import User
 
 router = APIRouter()
@@ -38,8 +39,10 @@ class UnregisterDeviceRequest(BaseModel):
 # ==================== Routes ====================
 
 @router.post("/register")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def register_device(
-    request: RegisterDeviceRequest,
+    request: Request,
+    body: RegisterDeviceRequest,
     current_user: CurrentUser,
     db: DbSession,
 ):
@@ -64,14 +67,14 @@ async def register_device(
     # Check if token already exists (update it) or add new
     existing_idx = None
     for i, device in enumerate(user.device_tokens):
-        if device.get("token") == request.token:
+        if device.get("token") == body.token:
             existing_idx = i
             break
 
     device_entry = {
-        "token": request.token,
-        "platform": request.platform,
-        "device_name": request.device_name,
+        "token": body.token,
+        "platform": body.platform,
+        "device_name": body.device_name,
         "created_at": datetime.utcnow().isoformat(),
     }
 
@@ -86,7 +89,7 @@ async def register_device(
         user.device_tokens.append(device_entry)
 
     # Update last platform
-    user.last_platform = request.platform
+    user.last_platform = body.platform
     user.push_enabled = True
 
     # Force the list to be seen as modified
@@ -103,8 +106,10 @@ async def register_device(
 
 
 @router.delete("/unregister")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def unregister_device(
-    request: UnregisterDeviceRequest,
+    request: Request,
+    body: UnregisterDeviceRequest,
     current_user: CurrentUser,
     db: DbSession,
 ):
@@ -124,7 +129,7 @@ async def unregister_device(
         original_count = len(user.device_tokens)
         user.device_tokens = [
             d for d in user.device_tokens
-            if d.get("token") != request.token
+            if d.get("token") != body.token
         ]
 
         # Force the list to be seen as modified
@@ -148,7 +153,9 @@ async def unregister_device(
 
 
 @router.get("/my-devices", response_model=List[DeviceInfo])
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_my_devices(
+    request: Request,
     current_user: CurrentUser,
     db: DbSession,
 ):
@@ -169,7 +176,9 @@ async def get_my_devices(
 
 
 @router.post("/toggle-push")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def toggle_push_notifications(
+    request: Request,
     enabled: bool,
     current_user: CurrentUser,
     db: DbSession,

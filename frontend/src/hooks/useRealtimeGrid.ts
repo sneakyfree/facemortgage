@@ -109,10 +109,8 @@ export function useRealtimeGrid(options: UseRealtimeGridOptions = {}) {
     }
 
     try {
-      // Get auth token if available (grid can work without auth for anonymous browsing)
-      const token = localStorage.getItem('access_token');
-      const tokenParam = token ? `?token=${token}` : '';
-      wsRef.current = new WebSocket(`${WS_BASE_URL}/ws/grid${tokenParam}`);
+      // Grid WebSocket is public (no authentication required for browsing)
+      wsRef.current = new WebSocket(`${WS_BASE_URL}/ws/grid`);
 
       wsRef.current.onopen = () => {
         console.log('Grid WebSocket connected');

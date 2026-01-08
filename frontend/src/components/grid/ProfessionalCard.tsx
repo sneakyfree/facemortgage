@@ -23,12 +23,26 @@ export default function ProfessionalCard({ professional, onCallClick }: Professi
   const [showBaseballCard, setShowBaseballCard] = useState(false);
 
   const isAvailable = professional.status === 'online_available';
+  const fullName = `${professional.first_name} ${professional.last_name}`;
+
+  // Handle keyboard interaction for calling
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.key === 'Enter' || e.key === ' ') && isAvailable) {
+      e.preventDefault();
+      onCallClick(professional);
+    }
+  };
 
   return (
-    <div
+    <article
+      role="article"
+      aria-label={`${fullName}, ${getUserTypeLabel(professional.user_type)}${isAvailable ? ', available for calls' : ', currently busy'}`}
+      tabIndex={isAvailable ? 0 : -1}
+      onKeyDown={handleKeyDown}
       className={cn(
         'relative bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300',
         'hover:shadow-xl hover:scale-[1.02]',
+        'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
         !isAvailable && 'opacity-75'
       )}
       onMouseEnter={() => setIsHovered(true)}
@@ -57,6 +71,7 @@ export default function ProfessionalCard({ professional, onCallClick }: Professi
               'w-3 h-3 rounded-full ring-2 ring-white',
               getStatusColor(professional.status)
             )}
+            aria-hidden="true"
           />
           <span className="text-xs font-medium text-white bg-black/50 px-2 py-0.5 rounded">
             {isAvailable ? 'Available' : 'Busy'}
@@ -82,9 +97,10 @@ export default function ProfessionalCard({ professional, onCallClick }: Professi
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity">
             <button
               onClick={() => onCallClick(professional)}
-              className="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-3 rounded-full flex items-center gap-2 transition-colors"
+              aria-label={`Call ${fullName} now`}
+              className="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-3 rounded-full flex items-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
             >
-              <Phone className="w-5 h-5" />
+              <Phone className="w-5 h-5" aria-hidden="true" />
               Call Now
             </button>
           </div>
@@ -107,24 +123,24 @@ export default function ProfessionalCard({ professional, onCallClick }: Professi
         {/* Stats Row */}
         <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
           {/* Rating */}
-          <div className="flex items-center gap-1">
-            <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+          <div className="flex items-center gap-1" aria-label={`Rating: ${formatRating(professional.avg_rating)} stars from ${professional.total_reviews} reviews`}>
+            <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" aria-hidden="true" />
             <span className="font-medium">{formatRating(professional.avg_rating)}</span>
             <span className="text-gray-400">({professional.total_reviews})</span>
           </div>
 
           {/* Pickup Time */}
           {professional.avg_pickup_time_seconds && (
-            <div className="flex items-center gap-1">
-              <Clock className="w-4 h-4 text-gray-400" />
+            <div className="flex items-center gap-1" aria-label={`Average response time: ${formatPickupTime(professional.avg_pickup_time_seconds)}`}>
+              <Clock className="w-4 h-4 text-gray-400" aria-hidden="true" />
               <span>{formatPickupTime(professional.avg_pickup_time_seconds)}</span>
             </div>
           )}
 
           {/* Experience */}
           {professional.years_experience && (
-            <div className="flex items-center gap-1">
-              <Award className="w-4 h-4 text-gray-400" />
+            <div className="flex items-center gap-1" aria-label={`${professional.years_experience} years of experience`}>
+              <Award className="w-4 h-4 text-gray-400" aria-hidden="true" />
               <span>{professional.years_experience}yr</span>
             </div>
           )}
@@ -179,9 +195,10 @@ export default function ProfessionalCard({ professional, onCallClick }: Professi
               });
               setShowBaseballCard(true);
             }}
-            className="mt-3 w-full flex items-center justify-center gap-2 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+            aria-label={`View detailed stats for ${fullName}`}
+            className="mt-3 w-full flex items-center justify-center gap-2 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            <BarChart2 className="w-4 h-4" />
+            <BarChart2 className="w-4 h-4" aria-hidden="true" />
             View Stats
           </button>
         )}
@@ -196,6 +213,6 @@ export default function ProfessionalCard({ professional, onCallClick }: Professi
           onClose={() => setShowBaseballCard(false)}
         />
       )}
-    </div>
+    </article>
   );
 }

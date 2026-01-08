@@ -126,7 +126,9 @@ describe('useRealtimeGrid', () => {
     expect(wsInstances[0].url).toBe('ws://localhost:8000/ws/grid');
   });
 
-  it('includes auth token in connection URL when available', async () => {
+  it('uses the same URL regardless of auth (auth via httpOnly cookies)', async () => {
+    // Token in localStorage doesn't affect the WebSocket URL anymore
+    // Authentication is now handled via httpOnly cookies automatically sent by browser
     mockLocalStorage.store['access_token'] = 'my-auth-token';
 
     renderHook(() => useRealtimeGrid({ enabled: true }));
@@ -135,7 +137,8 @@ describe('useRealtimeGrid', () => {
       vi.advanceTimersByTime(20);
     });
 
-    expect(wsInstances[0].url).toBe('ws://localhost:8000/ws/grid?token=my-auth-token');
+    // URL should not contain token - auth is via cookies, not URL params
+    expect(wsInstances[0].url).toBe('ws://localhost:8000/ws/grid');
   });
 
   it('does not connect when disabled', () => {

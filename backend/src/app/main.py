@@ -15,6 +15,9 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from src.app.api.v1.router import api_router
 from src.app.api.v1.routes import health
+from src.app.core.exceptions import register_exception_handlers
+from src.app.middleware.request_id import RequestIdMiddleware
+from src.app.middleware.csrf import CSRFMiddleware
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -134,17 +137,123 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.app_name,
-    description="FaceMortgage - Real-time video lead generation platform for mortgage professionals",
-    version="0.1.0",
+    description="""
+## Overview
+
+FaceMortgage connects borrowers with mortgage professionals through real-time video calls.
+This API powers the entire platform including professional discovery, video calling,
+lead management, and subscription billing.
+
+## Authentication
+
+Most endpoints require authentication via JWT tokens.
+
+### For API Clients
+Include the token in the Authorization header:
+```
+Authorization: Bearer <your-token>
+```
+
+### For Browser Clients
+Tokens are automatically managed via httpOnly cookies after login.
+
+## Rate Limits
+
+To ensure fair usage and platform stability:
+- **Auth endpoints**: 5 requests/minute
+- **Read endpoints**: 100 requests/minute
+- **Write endpoints**: 30 requests/minute
+
+Rate limit headers are included in responses:
+- `X-RateLimit-Limit`: Maximum requests allowed
+- `X-RateLimit-Remaining`: Requests remaining
+- `X-RateLimit-Reset`: Unix timestamp when limit resets
+
+## WebSocket Endpoints
+
+Real-time features use WebSocket connections:
+- `/ws/presence/{professional_id}` - Professional online status
+- `/ws/grid` - Real-time grid updates (no auth required)
+- `/ws/signaling/{room_id}/{user_id}` - WebRTC call signaling
+
+## Error Responses
+
+All errors follow a consistent format:
+```json
+{
+  "detail": "Error message",
+  "error_code": "ERROR_CODE"
+}
+```
+
+## Support
+
+For API questions or issues, contact support@facemortgage.com
+    """,
+    version="1.0.0",
     openapi_url=f"{settings.api_v1_prefix}/openapi.json",
     docs_url=f"{settings.api_v1_prefix}/docs",
     redoc_url=f"{settings.api_v1_prefix}/redoc",
     lifespan=lifespan,
+    openapi_tags=[
+        {
+            "name": "health",
+            "description": "Health check endpoints for monitoring and load balancer probes.",
+        },
+        {
+            "name": "auth",
+            "description": "Authentication and registration endpoints. Use these to register users and obtain access tokens.",
+        },
+        {
+            "name": "grid",
+            "description": "Professional grid endpoints for discovering and filtering mortgage professionals.",
+        },
+        {
+            "name": "professionals",
+            "description": "Professional profile and management endpoints.",
+        },
+        {
+            "name": "calls",
+            "description": "Video call management including initiation, status, and ratings.",
+        },
+        {
+            "name": "scheduled-calls",
+            "description": "Schedule calls for later with professionals.",
+        },
+        {
+            "name": "billing",
+            "description": "Subscription management and Stripe integration for professionals.",
+        },
+        {
+            "name": "data",
+            "description": "External data provider integration for professional statistics.",
+        },
+        {
+            "name": "partnerships",
+            "description": "Referral and partnership management for professionals.",
+        },
+    ],
+    contact={
+        "name": "FaceMortgage Support",
+        "email": "support@facemortgage.com",
+    },
+    license_info={
+        "name": "Proprietary",
+    },
 )
 
 # Rate limiting
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
+# Register custom exception handlers for standardized error responses
+register_exception_handlers(app)
+
+# Request ID middleware (must be added before other middleware to capture all requests)
+app.add_middleware(RequestIdMiddleware)
+
+# CSRF protection middleware
+app.add_middleware(CSRFMiddleware)
 
 # Security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
@@ -155,7 +264,7 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "Accept", "X-Requested-With"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "X-Requested-With", "X-CSRF-Token"],
 )
 
 # Include API routes
@@ -175,11 +284,37 @@ async def root():
 
 # ==================== WebSocket Endpoints ====================
 
+def get_ws_token(websocket: WebSocket) -> Optional[str]:
+    """
+    Extract authentication token from WebSocket connection.
+
+    Security priority (from most to least secure):
+    1. Cookie (httpOnly, secure) - preferred for browser clients
+    2. Sec-WebSocket-Protocol header - for clients that can't use cookies
+
+    Note: Query params are NOT supported to prevent token leakage in logs/URLs.
+    """
+    # Try cookie first (most secure for browser clients)
+    token = websocket.cookies.get("access_token")
+    if token:
+        return token
+
+    # Try Sec-WebSocket-Protocol header
+    # Client sends: Sec-WebSocket-Protocol: auth, <token>
+    # Server responds with: Sec-WebSocket-Protocol: auth
+    protocols = websocket.headers.get("sec-websocket-protocol", "")
+    if protocols:
+        parts = [p.strip() for p in protocols.split(",")]
+        if len(parts) >= 2 and parts[0] == "auth":
+            return parts[1]
+
+    return None
+
+
 @app.websocket("/ws/presence/{professional_id}")
 async def websocket_professional_presence(
     websocket: WebSocket,
     professional_id: str,
-    token: Optional[str] = Query(None),
 ):
     """
     WebSocket endpoint for professional presence.
@@ -190,13 +325,19 @@ async def websocket_professional_presence(
     - Update their status (busy, in_call, away)
     - Toggle camera state
 
-    Query params:
-        token: JWT access token for authentication
+    Authentication:
+        - Cookie: access_token (preferred for browsers)
+        - Header: Sec-WebSocket-Protocol: auth, <token>
     """
-    # Validate token and authorize professional
+    # Extract token from secure sources only
+    token = get_ws_token(websocket)
     if not token:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
+
+    # Accept with protocol if using Sec-WebSocket-Protocol
+    protocols = websocket.headers.get("sec-websocket-protocol", "")
+    subprotocol = "auth" if protocols.startswith("auth") else None
 
     async with async_session_maker() as db:
         user = await get_current_user_ws(token, db)
@@ -217,7 +358,7 @@ async def websocket_professional_presence(
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
 
-    await professional_presence_handler(websocket, professional_id)
+    await professional_presence_handler(websocket, professional_id, subprotocol)
 
 
 @app.websocket("/ws/grid")
@@ -249,7 +390,6 @@ async def websocket_signaling(
     websocket: WebSocket,
     room_id: str,
     user_id: str,
-    token: Optional[str] = Query(None),
 ):
     """
     WebSocket endpoint for WebRTC signaling.
@@ -263,13 +403,19 @@ async def websocket_signaling(
         room_id: The call room ID
         user_id: The connecting user's ID
 
-    Query params:
-        token: JWT access token for authentication
+    Authentication:
+        - Cookie: access_token (preferred for browsers)
+        - Header: Sec-WebSocket-Protocol: auth, <token>
     """
-    # Validate token and user authorization
+    # Extract token from secure sources only
+    token = get_ws_token(websocket)
     if not token:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
+
+    # Accept with protocol if using Sec-WebSocket-Protocol
+    protocols = websocket.headers.get("sec-websocket-protocol", "")
+    subprotocol = "auth" if protocols.startswith("auth") else None
 
     async with async_session_maker() as db:
         user = await get_current_user_ws(token, db)
@@ -294,4 +440,4 @@ async def websocket_signaling(
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
 
-    await signaling_handler(websocket, room_id, user_id)
+    await signaling_handler(websocket, room_id, user_id, subprotocol)

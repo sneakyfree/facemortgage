@@ -358,5 +358,5 @@ class CoreLogicProvider(ProfessionalDataProvider):
             await self._ensure_token()
             await asyncio.sleep(0.02)
             return True
-        except Exception:
+        except (httpx.RequestError, httpx.HTTPStatusError, asyncio.TimeoutError):
             return False

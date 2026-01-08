@@ -7,12 +7,13 @@ from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from src.app.core.dependencies import DbSession, CurrentUser
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.partnership import Partnership, PartnershipStatus, PartnershipTier, PartnershipReferral
 from src.app.models.professional import ProfessionalProfile
 from src.app.models.user import UserType
@@ -81,8 +82,10 @@ class ReferralDetail(BaseModel):
 # ==================== Loan Officer Endpoints ====================
 
 @router.post("/invite", response_model=InvitePartnerResponse)
+@limiter.limit(RATE_LIMITS["api_write"])
 async def invite_partner(
-    request: InvitePartnerRequest,
+    request: Request,
+    body: InvitePartnerRequest,
     current_user: CurrentUser,
     db: DbSession,
 ):
@@ -115,7 +118,7 @@ async def invite_partner(
     existing = await db.execute(
         select(Partnership).where(
             Partnership.loan_officer_id == professional.id,
-            Partnership.external_realtor_email == request.realtor_email,
+            Partnership.external_realtor_email == body.realtor_email,
             Partnership.status.in_([PartnershipStatus.PENDING, PartnershipStatus.ACTIVE]),
         )
     )
@@ -128,10 +131,10 @@ async def invite_partner(
     # Create partnership
     partnership = Partnership(
         loan_officer_id=professional.id,
-        external_realtor_name=request.realtor_name,
-        external_realtor_email=request.realtor_email,
-        external_realtor_phone=request.realtor_phone,
-        external_realtor_company=request.realtor_company,
+        external_realtor_name=body.realtor_name,
+        external_realtor_email=body.realtor_email,
+        external_realtor_phone=body.realtor_phone,
+        external_realtor_company=body.realtor_company,
         status=PartnershipStatus.PENDING,
         tier=PartnershipTier.BASIC,
     )
@@ -146,8 +149,8 @@ async def invite_partner(
     try:
         email_service = get_email_service()
         invitation_sent = await email_service.send_partnership_invitation(
-            realtor_email=request.realtor_email,
-            realtor_name=request.realtor_name,
+            realtor_email=body.realtor_email,
+            realtor_name=body.realtor_name,
             lo_name=f"{current_user.first_name} {current_user.last_name}",
             lo_company=professional.company_name or "FaceMortgage",
             invitation_token=partnership.invitation_token,
@@ -162,7 +165,9 @@ async def invite_partner(
 
 
 @router.get("/my-partnerships", response_model=List[PartnershipDetail])
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_my_partnerships(
+    request: Request,
     current_user: CurrentUser,
     db: DbSession,
 ):
@@ -222,7 +227,9 @@ async def get_my_partnerships(
 
 
 @router.get("/{partnership_id}/referrals", response_model=List[ReferralDetail])
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_partnership_referrals(
+    request: Request,
     partnership_id: UUID,
     current_user: CurrentUser,
     db: DbSession,
@@ -283,7 +290,9 @@ async def get_partnership_referrals(
 # ==================== Realtor/Partner Endpoints ====================
 
 @router.post("/accept/{token}")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def accept_partnership(
+    request: Request,
     token: str,
     db: DbSession,
 ):
@@ -324,9 +333,11 @@ async def accept_partnership(
 
 
 @router.post("/{partnership_id}/refer", response_model=ReferralDetail)
+@limiter.limit(RATE_LIMITS["api_write"])
 async def submit_referral(
+    request: Request,
     partnership_id: UUID,
-    request: SubmitReferralRequest,
+    body: SubmitReferralRequest,
     current_user: CurrentUser,
     db: DbSession,
 ):
@@ -372,13 +383,13 @@ async def submit_referral(
     # Create referral
     referral = PartnershipReferral(
         partnership_id=partnership_id,
-        borrower_name=request.borrower_name,
-        borrower_email=request.borrower_email,
-        borrower_phone=request.borrower_phone,
-        property_address=request.property_address,
-        loan_purpose=request.loan_purpose,
-        estimated_amount=request.estimated_amount,
-        notes=request.notes,
+        borrower_name=body.borrower_name,
+        borrower_email=body.borrower_email,
+        borrower_phone=body.borrower_phone,
+        property_address=body.property_address,
+        loan_purpose=body.loan_purpose,
+        estimated_amount=body.estimated_amount,
+        notes=body.notes,
         source="manual",
         status="new",
     )
@@ -388,13 +399,13 @@ async def submit_referral(
     lead = Lead(
         professional_id=partnership.loan_officer_id,
         borrower_id=None,  # Partner referral
-        contact_name=request.borrower_name,
-        contact_email=request.borrower_email,
-        contact_phone=request.borrower_phone,
-        property_address=request.property_address,
-        loan_purpose=request.loan_purpose,
-        estimated_loan_amount=request.estimated_amount,
-        notes=request.notes,
+        contact_name=body.borrower_name,
+        contact_email=body.borrower_email,
+        contact_phone=body.borrower_phone,
+        property_address=body.property_address,
+        loan_purpose=body.loan_purpose,
+        estimated_loan_amount=body.estimated_amount,
+        notes=body.notes,
         lead_status=LeadStatus.NEW,
         utm_source="partnership",
         utm_medium="realtor_referral",
@@ -434,10 +445,10 @@ async def submit_referral(
             await email_service.send_new_referral_notification(
                 professional_email=loan_officer.user.email,
                 realtor_name=f"{professional.user.first_name} {professional.user.last_name}",
-                borrower_name=request.borrower_name,
-                borrower_email=request.borrower_email,
-                borrower_phone=request.borrower_phone,
-                property_address=request.property_address,
+                borrower_name=body.borrower_name,
+                borrower_email=body.borrower_email,
+                borrower_phone=body.borrower_phone,
+                property_address=body.property_address,
                 lead_id=str(lead.id),
             )
     except Exception as e:
@@ -457,7 +468,9 @@ async def submit_referral(
 
 
 @router.post("/{partnership_id}/terminate")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def terminate_partnership(
+    request: Request,
     partnership_id: UUID,
     current_user: CurrentUser,
     db: DbSession,
@@ -507,7 +520,9 @@ async def terminate_partnership(
 # ==================== Widget Endpoints ====================
 
 @router.get("/{partnership_id}/widget-code")
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_widget_embed_code(
+    request: Request,
     partnership_id: UUID,
     current_user: CurrentUser,
     db: DbSession,
@@ -563,7 +578,9 @@ async def get_widget_embed_code(
 
 
 @router.post("/{partnership_id}/widget/enable")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def enable_widget(
+    request: Request,
     partnership_id: UUID,
     current_user: CurrentUser,
     db: DbSession,

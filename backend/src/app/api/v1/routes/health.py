@@ -5,6 +5,7 @@ Provides endpoints for monitoring systems, load balancers, and Kubernetes
 probes to determine application health status.
 """
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -19,6 +20,18 @@ from src.app.config import settings
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def _measure_latency(coro) -> tuple[Any, float]:
+    """Execute a coroutine and measure its latency in milliseconds."""
+    start = time.perf_counter()
+    try:
+        result = await coro
+        latency_ms = (time.perf_counter() - start) * 1000
+        return result, latency_ms
+    except Exception as e:
+        latency_ms = (time.perf_counter() - start) * 1000
+        raise
 
 
 @router.get(
@@ -64,40 +77,72 @@ async def readiness_check() -> JSONResponse:
     Returns 200 if all dependencies are healthy, 503 otherwise.
     """
     checks: dict[str, dict[str, Any]] = {
-        "database": {"status": "unknown"},
-        "redis": {"status": "unknown"},
+        "database": {"status": "unknown", "latency_ms": None},
+        "redis": {"status": "unknown", "latency_ms": None},
     }
     all_healthy = True
 
-    # Check database connection
+    # Check database connection with latency measurement
     try:
+        start = time.perf_counter()
         async with async_session_maker() as session:
             result = await session.execute(text("SELECT 1"))
             result.scalar()
-            checks["database"] = {
-                "status": "healthy",
-                "latency_ms": None,  # Could add timing here if needed
-            }
+        latency_ms = round((time.perf_counter() - start) * 1000, 2)
+
+        checks["database"] = {
+            "status": "healthy",
+            "latency_ms": latency_ms,
+        }
+
+        # Warn if database is slow
+        if latency_ms > 100:
+            logger.warning(f"Database health check slow: {latency_ms}ms")
+
     except Exception as e:
+        latency_ms = round((time.perf_counter() - start) * 1000, 2) if 'start' in locals() else None
         logger.error(f"Database health check failed: {e}")
         checks["database"] = {
             "status": "unhealthy",
+            "latency_ms": latency_ms,
             "error": str(e),
         }
         all_healthy = False
 
-    # Check Redis connection
+    # Check Redis connection with latency measurement
     try:
+        start = time.perf_counter()
         redis_client = await get_redis()
         await redis_client.ping()
+        latency_ms = round((time.perf_counter() - start) * 1000, 2)
+
+        # Get Redis connection pool info if available
+        pool_info = {}
+        try:
+            pool = redis_client.connection_pool
+            pool_info = {
+                "max_connections": getattr(pool, "max_connections", None),
+                "current_connections": len(getattr(pool, "_available_connections", [])) + len(getattr(pool, "_in_use_connections", [])),
+            }
+        except Exception:
+            pass
+
         checks["redis"] = {
             "status": "healthy",
-            "latency_ms": None,
+            "latency_ms": latency_ms,
+            **pool_info,
         }
+
+        # Warn if Redis is slow
+        if latency_ms > 50:
+            logger.warning(f"Redis health check slow: {latency_ms}ms")
+
     except Exception as e:
+        latency_ms = round((time.perf_counter() - start) * 1000, 2) if 'start' in locals() else None
         logger.error(f"Redis health check failed: {e}")
         checks["redis"] = {
             "status": "unhealthy",
+            "latency_ms": latency_ms,
             "error": str(e),
         }
         all_healthy = False

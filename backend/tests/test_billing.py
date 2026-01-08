@@ -89,8 +89,9 @@ class TestWebhookHandling:
         mock_stripe_service,
     ):
         """Should reject webhook with invalid signature."""
+        # Use ValueError which is caught by the route handler
         mock_stripe_service.construct_webhook_event = MagicMock(
-            side_effect=Exception("Invalid signature")
+            side_effect=ValueError("Invalid signature")
         )
 
         with patch("src.app.api.v1.routes.billing.get_stripe_service", return_value=mock_stripe_service):

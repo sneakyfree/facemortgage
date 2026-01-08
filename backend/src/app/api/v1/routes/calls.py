@@ -12,12 +12,13 @@ from typing import Optional
 from uuid import UUID
 import uuid
 import logging
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Request
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from src.app.core.dependencies import DbSession, CurrentUser, CurrentUserOptional
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.config import settings
 from src.app.models.user import User
 from src.app.models.professional import ProfessionalProfile, ProfessionalStatus
@@ -98,8 +99,10 @@ class RateCallResponse(BaseModel):
 # ==================== Routes ====================
 
 @router.post("", response_model=InitiateCallResponse)
+@limiter.limit(RATE_LIMITS["api_write"])
 async def initiate_call(
-    request: InitiateCallRequest,
+    request: Request,
+    body: InitiateCallRequest,
     current_user: CurrentUserOptional,  # Optional - allows anonymous calls
     db: DbSession,
 ):
@@ -128,7 +131,7 @@ async def initiate_call(
         caller_name = f"{current_user.first_name} {current_user.last_name}"
     else:
         borrower_id = None
-        anonymous_session_id = request.anonymous_session_id or str(uuid.uuid4())
+        anonymous_session_id = body.anonymous_session_id or str(uuid.uuid4())
         is_anonymous = True
         caller_id = f"anon:{anonymous_session_id}"
         caller_name = "Anonymous Caller"
@@ -137,7 +140,7 @@ async def initiate_call(
     query = (
         select(ProfessionalProfile)
         .options(selectinload(ProfessionalProfile.user))
-        .where(ProfessionalProfile.id == request.professional_id)
+        .where(ProfessionalProfile.id == body.professional_id)
     )
     result = await db.execute(query)
     professional = result.scalar_one_or_none()
@@ -241,7 +244,7 @@ async def initiate_call(
         borrower_id=borrower_id,  # None for anonymous
         professional_id=professional.id,
         anonymous_session_id=anonymous_session_id if is_anonymous else None,
-        anonymous_device_fingerprint=request.device_fingerprint if is_anonymous else None,
+        anonymous_device_fingerprint=body.device_fingerprint if is_anonymous else None,
         status=CallStatus.RINGING,
         initiated_at=datetime.utcnow(),
     )
@@ -302,7 +305,9 @@ async def initiate_call(
 
 
 @router.get("/{room_id}", response_model=CallStateResponse)
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_call_state(
+    request: Request,
     room_id: str,
     current_user: CurrentUser,
 ):
@@ -335,7 +340,9 @@ async def get_call_state(
 
 
 @router.post("/{room_id}/end")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def end_call(
+    request: Request,
     room_id: str,
     current_user: CurrentUser,
     db: DbSession,
@@ -398,7 +405,9 @@ async def end_call(
 
 
 @router.post("/{room_id}/rate", response_model=RateCallResponse)
+@limiter.limit(RATE_LIMITS["api_write"])
 async def rate_call(
+    request: Request,
     room_id: str,
     rating: RateCallRequest,
     current_user: CurrentUser,
@@ -477,9 +486,11 @@ async def rate_call(
 
 
 @router.post("/{call_id}/capture-lead", response_model=CaptureLeadResponse)
+@limiter.limit(RATE_LIMITS["api_write"])
 async def capture_anonymous_lead(
+    request: Request,
     call_id: UUID,
-    request: CaptureLeadRequest,
+    body: CaptureLeadRequest,
     db: DbSession,
 ):
     """
@@ -507,9 +518,9 @@ async def capture_anonymous_lead(
         )
 
     # Update call with captured info
-    call.captured_name = request.name
-    call.captured_email = request.email
-    call.captured_phone = request.phone
+    call.captured_name = body.name
+    call.captured_email = body.email
+    call.captured_phone = body.phone
     call.lead_captured_at = datetime.utcnow()
 
     # Create lead for professional
@@ -517,12 +528,12 @@ async def capture_anonymous_lead(
         professional_id=call.professional_id,
         borrower_id=None,  # Anonymous
         source_call_id=call.id,
-        contact_name=request.name,
-        contact_email=request.email,
-        contact_phone=request.phone,
-        loan_purpose=request.loan_purpose,
-        estimated_loan_amount=request.estimated_amount,
-        notes=request.notes,
+        contact_name=body.name,
+        contact_email=body.email,
+        contact_phone=body.phone,
+        loan_purpose=body.loan_purpose,
+        estimated_loan_amount=body.estimated_amount,
+        notes=body.notes,
         lead_status=LeadStatus.NEW,
         utm_source="anonymous_call",
     )

@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from src.app.core.dependencies import DbSession
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.professional import Specialty, Language, County
 from src.app.schemas.professional import SpecialtyResponse, LanguageResponse, CountyResponse
 
@@ -58,7 +59,9 @@ router = APIRouter()
 
 
 @router.get("/specialties", response_model=List[SpecialtyResponse])
+@limiter.limit(RATE_LIMITS["api_read"])
 async def list_specialties(
+    request: Request,
     db: DbSession,
     category: Optional[str] = Query(None, description="Filter by category"),
 ):
@@ -73,7 +76,8 @@ async def list_specialties(
 
 
 @router.get("/languages", response_model=List[LanguageResponse])
-async def list_languages(db: DbSession):
+@limiter.limit(RATE_LIMITS["api_read"])
+async def list_languages(request: Request, db: DbSession):
     """List all available languages."""
     query = select(Language).order_by(Language.name)
     result = await db.execute(query)
@@ -81,7 +85,9 @@ async def list_languages(db: DbSession):
 
 
 @router.get("/counties", response_model=List[CountyResponse])
+@limiter.limit(RATE_LIMITS["api_read"])
 async def list_counties(
+    request: Request,
     db: DbSession,
     state_code: Optional[str] = Query(None, description="Filter by state code"),
 ):
@@ -212,6 +218,7 @@ async def geolocate_ip(ip: str) -> GeoLocationResponse:
 
 
 @router.get("/geo", response_model=GeoLocationResponse)
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_geo_location(
     request: Request,
     lat: Optional[float] = Query(None, description="Latitude for reverse geocoding"),
@@ -243,7 +250,8 @@ async def get_geo_location(
 
 
 @router.get("/states")
-async def list_states():
+@limiter.limit(RATE_LIMITS["api_read"])
+async def list_states(request: Request):
     """List all US states with their codes and names."""
     return [
         {"code": code, "name": name}

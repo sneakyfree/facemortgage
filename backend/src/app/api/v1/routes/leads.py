@@ -4,13 +4,14 @@ API routes for lead management.
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.app.core.auth import get_current_user
 from src.app.core.database import get_db
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.user import User
 from src.app.models.lead import Lead, LeadActivity, LeadStatus as LeadStatusModel
 from src.app.models.professional import ProfessionalProfile
@@ -43,7 +44,9 @@ async def get_professional_profile(user: User, db: AsyncSession) -> Professional
 
 
 @router.get("", response_model=LeadListResponse)
+@limiter.limit(RATE_LIMITS["api_read"])
 async def list_leads(
+    request: Request,
     status: Optional[LeadStatus] = None,
     search: Optional[str] = None,
     sort_by: str = Query("created_at", pattern="^(created_at|updated_at|estimated_loan_amount|next_followup_at)$"),
@@ -128,7 +131,9 @@ async def list_leads(
 
 
 @router.get("/stats", response_model=LeadStats)
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_lead_stats(
+    request: Request,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -228,7 +233,9 @@ async def get_lead_stats(
 
 
 @router.post("", response_model=LeadResponse)
+@limiter.limit(RATE_LIMITS["api_write"])
 async def create_lead(
+    request: Request,
     data: LeadCreate,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -262,7 +269,9 @@ async def create_lead(
 
 
 @router.get("/{lead_id}", response_model=LeadResponse)
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_lead(
+    request: Request,
     lead_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -285,7 +294,9 @@ async def get_lead(
 
 
 @router.patch("/{lead_id}", response_model=LeadResponse)
+@limiter.limit(RATE_LIMITS["api_write"])
 async def update_lead(
+    request: Request,
     lead_id: str,
     data: LeadUpdate,
     user: User = Depends(get_current_user),
@@ -333,7 +344,9 @@ async def update_lead(
 
 
 @router.delete("/{lead_id}")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def delete_lead(
+    request: Request,
     lead_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -358,7 +371,9 @@ async def delete_lead(
 
 
 @router.post("/{lead_id}/activities", response_model=LeadActivityResponse)
+@limiter.limit(RATE_LIMITS["api_write"])
 async def add_lead_activity(
+    request: Request,
     lead_id: str,
     data: LeadActivityCreate,
     user: User = Depends(get_current_user),
@@ -405,7 +420,9 @@ async def add_lead_activity(
 
 
 @router.get("/{lead_id}/activities", response_model=list[LeadActivityResponse])
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_lead_activities(
+    request: Request,
     lead_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

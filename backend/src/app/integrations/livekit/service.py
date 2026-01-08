@@ -15,10 +15,13 @@ Environment variables:
 """
 import logging
 import time
+import asyncio
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
+
+import httpx
 
 from src.app.config import settings
 
@@ -226,7 +229,7 @@ class LiveKitService:
                 created_at=datetime.utcnow(),
                 is_recording=False,
             )
-        except Exception as e:
+        except (httpx.RequestError, httpx.HTTPStatusError, asyncio.TimeoutError) as e:
             logger.error(f"Failed to create LiveKit room: {e}")
             raise
 
@@ -246,7 +249,7 @@ class LiveKitService:
                     is_recording=room.active_recording,
                 )
             return None
-        except Exception as e:
+        except (httpx.RequestError, httpx.HTTPStatusError, asyncio.TimeoutError) as e:
             logger.error(f"Failed to get room info: {e}")
             return None
 
@@ -260,7 +263,7 @@ class LiveKitService:
                 lk.DeleteRoomRequest(room=room_name)
             )
             return True
-        except Exception as e:
+        except (httpx.RequestError, httpx.HTTPStatusError, asyncio.TimeoutError) as e:
             logger.error(f"Failed to delete room: {e}")
             return False
 
@@ -284,7 +287,7 @@ class LiveKitService:
                 }
                 for p in response.participants
             ]
-        except Exception as e:
+        except (httpx.RequestError, httpx.HTTPStatusError, asyncio.TimeoutError) as e:
             logger.error(f"Failed to list participants: {e}")
             return []
 
@@ -305,7 +308,7 @@ class LiveKitService:
                 )
             )
             return True
-        except Exception as e:
+        except (httpx.RequestError, httpx.HTTPStatusError, asyncio.TimeoutError) as e:
             logger.error(f"Failed to remove participant: {e}")
             return False
 
@@ -356,7 +359,7 @@ class LiveKitService:
             logger.info(f"Started recording for room {room_name}: {egress.egress_id}")
             return egress.egress_id
 
-        except Exception as e:
+        except (httpx.RequestError, httpx.HTTPStatusError, asyncio.TimeoutError) as e:
             logger.error(f"Failed to start recording: {e}")
             return None
 
@@ -371,7 +374,7 @@ class LiveKitService:
             )
             logger.info(f"Stopped recording: {egress_id}")
             return True
-        except Exception as e:
+        except (httpx.RequestError, httpx.HTTPStatusError, asyncio.TimeoutError) as e:
             logger.error(f"Failed to stop recording: {e}")
             return False
 
@@ -395,7 +398,7 @@ class LiveKitService:
                     "ended_at": egress.ended_at,
                 }
             return None
-        except Exception as e:
+        except (httpx.RequestError, httpx.HTTPStatusError, asyncio.TimeoutError) as e:
             logger.error(f"Failed to get recording status: {e}")
             return None
 

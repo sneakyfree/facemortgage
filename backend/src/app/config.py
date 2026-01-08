@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://facemortgage:facemortgage_dev@localhost:5432/facemortgage"
     database_pool_size: int = 20
     database_max_overflow: int = 10
+    slow_query_threshold: float = 0.5  # Log queries taking longer than this (in seconds)
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
@@ -33,6 +34,11 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
+
+    # Cookie settings
+    cookie_secure: bool = True  # Set to False for local development without HTTPS
+    cookie_samesite: str = "lax"  # "lax", "strict", or "none"
+    cookie_domain: Optional[str] = None  # None = current domain only
 
     @field_validator("secret_key", mode="before")
     @classmethod
@@ -84,10 +90,24 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
 
     # External Data Provider
-    data_provider: str = "datagod"  # datagod, reeder, modex, corelogic
+    data_provider: str = "datagod"  # datagod, redr, modex, corelogic
     data_provider_api_key: Optional[str] = None
     data_provider_base_url: Optional[str] = None
     data_cache_ttl_hours: int = 24
+    data_provider_timeout: int = 30  # HTTP timeout in seconds
+    data_provider_retry_attempts: int = 3  # Number of retry attempts
+    data_provider_fallback_enabled: bool = True  # Enable fallback chain
+
+    # Provider-specific settings
+    datagod_api_key: Optional[str] = None
+    datagod_base_url: str = "https://api.datagod.com/v1"
+    corelogic_api_key: Optional[str] = None
+    corelogic_api_secret: Optional[str] = None
+    corelogic_base_url: str = "https://api.corelogic.com/v2"
+    redr_api_key: Optional[str] = None
+    redr_base_url: str = "https://api.redr.io/v1"
+    modex_api_key: Optional[str] = None
+    modex_base_url: str = "https://api.modex.com/v1"
 
     # WebRTC
     turn_server_url: Optional[str] = None

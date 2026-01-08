@@ -165,10 +165,9 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
   const connectSignaling = useCallback(
     (roomId: string, userId: string) => {
       return new Promise<void>((resolve, reject) => {
-        // Get auth token from localStorage
-        const token = localStorage.getItem('access_token');
-        const tokenParam = token ? `?token=${token}` : '';
-        const ws = new WebSocket(`${WS_BASE_URL}/ws/signaling/${roomId}/${userId}${tokenParam}`);
+        // WebSocket authentication is handled via httpOnly cookies
+        // The browser automatically sends cookies for same-origin connections
+        const ws = new WebSocket(`${WS_BASE_URL}/ws/signaling/${roomId}/${userId}`);
 
         ws.onopen = () => {
           console.log('Signaling connected');

@@ -5,11 +5,12 @@ import uuid
 from datetime import datetime, date, timedelta
 from typing import Optional
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select, func, and_, extract, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.auth import get_current_user
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.core.database import get_db
 from src.app.models.user import User
 from src.app.models.professional import ProfessionalProfile
@@ -60,7 +61,9 @@ async def get_professional_profile(user: User, db: AsyncSession) -> Professional
 
 
 @router.get("/overview", response_model=AnalyticsOverviewResponse)
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_analytics_overview(
+    request: Request,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -127,7 +130,9 @@ class RecentActivityResponse(BaseModel):
 
 
 @router.get("/recent-activity", response_model=RecentActivityResponse)
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_recent_activity(
+    request: Request,
     limit: int = Query(10, ge=1, le=50),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -217,7 +222,9 @@ def _format_relative_time(dt: datetime) -> str:
 
 
 @router.get("/dashboard", response_model=AnalyticsDashboard)
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_analytics_dashboard(
+    request: Request,
     period: str = Query("30d", pattern="^(7d|30d|90d|12m)$"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -266,7 +273,9 @@ async def get_analytics_dashboard(
 
 
 @router.get("/performance", response_model=PerformanceMetrics)
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_performance_metrics(
+    request: Request,
     period: str = Query("30d", pattern="^(7d|30d|90d|12m)$"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

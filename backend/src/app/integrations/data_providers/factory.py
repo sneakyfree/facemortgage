@@ -1,9 +1,10 @@
 """
 Factory for creating data provider instances.
 
-Supports pluggable providers via configuration.
+Supports pluggable providers via configuration, with fallback chain support.
 """
-from typing import Optional, Dict, Type
+import logging
+from typing import Optional, Dict, List, Type
 from functools import lru_cache
 
 from src.app.config import settings
@@ -13,6 +14,8 @@ from src.app.integrations.data_providers.redr import RedrProvider
 from src.app.integrations.data_providers.modex import ModexProvider
 from src.app.integrations.data_providers.corelogic import CoreLogicProvider
 
+logger = logging.getLogger(__name__)
+
 
 # Registry of available providers
 PROVIDER_REGISTRY: Dict[str, Type[ProfessionalDataProvider]] = {
@@ -21,6 +24,9 @@ PROVIDER_REGISTRY: Dict[str, Type[ProfessionalDataProvider]] = {
     "modex": ModexProvider,
     "corelogic": CoreLogicProvider,
 }
+
+# Default fallback order when primary provider fails
+DEFAULT_FALLBACK_ORDER: List[str] = ["datagod", "corelogic", "redr", "modex"]
 
 
 class DataProviderFactory:
@@ -108,3 +114,70 @@ def get_data_provider() -> ProfessionalDataProvider:
             return await provider.get_professional_stats(nmls_id)
     """
     return DataProviderFactory.get_provider()
+
+
+def get_provider_fallback_order() -> List[str]:
+    """
+    Get the fallback order for providers.
+
+    Returns configured primary provider first, then remaining providers
+    in default order.
+    """
+    primary = getattr(settings, "data_provider", "datagod").lower()
+
+    # Start with primary provider
+    order = [primary]
+
+    # Add remaining providers from default order
+    for provider in DEFAULT_FALLBACK_ORDER:
+        if provider not in order:
+            order.append(provider)
+
+    return order
+
+
+def is_provider_configured(provider_name: str) -> bool:
+    """
+    Check if a provider has API credentials configured.
+
+    Providers without credentials will be skipped in the fallback chain.
+    """
+    provider_name = provider_name.lower()
+
+    # Check for provider-specific API key
+    api_key_attr = f"{provider_name}_api_key"
+    if hasattr(settings, api_key_attr):
+        api_key = getattr(settings, api_key_attr)
+        if api_key:
+            return True
+
+    # Fall back to generic API key for primary provider
+    primary = getattr(settings, "data_provider", "datagod").lower()
+    if provider_name == primary:
+        generic_key = getattr(settings, "data_provider_api_key", None)
+        if generic_key:
+            return True
+
+    return False
+
+
+def get_configured_providers() -> List[str]:
+    """
+    Get list of providers that have API credentials configured.
+
+    Useful for determining which providers can actually be used.
+    """
+    configured = []
+    for provider_name in PROVIDER_REGISTRY.keys():
+        if is_provider_configured(provider_name):
+            configured.append(provider_name)
+
+    # If no providers are configured, return all (for testing/mock mode)
+    if not configured:
+        logger.warning(
+            "No data providers have API keys configured. "
+            "Using all providers (mock mode)."
+        )
+        return list(PROVIDER_REGISTRY.keys())
+
+    return configured

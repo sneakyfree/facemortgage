@@ -7,14 +7,22 @@ from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from src.app.core.dependencies import DbSession, CurrentUser
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.soft_lead import SoftLead, SoftLeadStatus
-from src.app.models.professional import ProfessionalProfile, ProfessionalStatus
+from src.app.models.professional import (
+    ProfessionalProfile,
+    ProfessionalStatus,
+    ProfessionalLanguage,
+    ProfessionalServiceArea,
+    Language,
+    County,
+)
 from src.app.models.lead import Lead, LeadStatus
 from src.app.services.email_service import get_email_service
 import logging
@@ -63,8 +71,10 @@ class SoftLeadDetail(BaseModel):
 # ==================== Routes ====================
 
 @router.post("/get-matched", response_model=GetMatchedResponse)
+@limiter.limit(RATE_LIMITS["api_write"])
 async def get_matched(
-    request: GetMatchedRequest,
+    request: Request,
+    body: GetMatchedRequest,
     db: DbSession,
 ):
     """
@@ -76,17 +86,17 @@ async def get_matched(
     """
     # Create soft lead with 30-day expiration
     soft_lead = SoftLead(
-        name=request.name,
-        email=request.email,
-        phone=request.phone,
-        loan_purpose=request.loan_purpose,
-        estimated_amount=request.estimated_amount,
-        property_state=request.property_state,
-        preferred_language=request.preferred_language,
-        timeframe=request.timeframe,
-        utm_source=request.utm_source,
-        utm_medium=request.utm_medium,
-        utm_campaign=request.utm_campaign,
+        name=body.name,
+        email=body.email,
+        phone=body.phone,
+        loan_purpose=body.loan_purpose,
+        estimated_amount=body.estimated_amount,
+        property_state=body.property_state,
+        preferred_language=body.preferred_language,
+        timeframe=body.timeframe,
+        utm_source=body.utm_source,
+        utm_medium=body.utm_medium,
+        utm_campaign=body.utm_campaign,
         status=SoftLeadStatus.NEW,
         expires_at=datetime.utcnow() + timedelta(days=30),
     )
@@ -106,8 +116,8 @@ async def get_matched(
     try:
         email_service = get_email_service()
         await email_service.send_get_matched_confirmation(
-            email=request.email,
-            name=request.name,
+            email=body.email,
+            name=body.name,
         )
     except Exception as e:
         logger.error(f"Failed to send get-matched confirmation email: {e}")
@@ -120,7 +130,9 @@ async def get_matched(
 
 
 @router.get("/professional/pending", response_model=list[SoftLeadDetail])
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_pending_soft_leads(
+    request: Request,
     current_user: CurrentUser,
     db: DbSession,
 ):
@@ -170,7 +182,9 @@ async def get_pending_soft_leads(
 
 
 @router.post("/{soft_lead_id}/contact")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def mark_soft_lead_contacted(
+    request: Request,
     soft_lead_id: UUID,
     current_user: CurrentUser,
     db: DbSession,
@@ -212,7 +226,9 @@ async def mark_soft_lead_contacted(
 
 
 @router.post("/{soft_lead_id}/convert")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def convert_soft_lead(
+    request: Request,
     soft_lead_id: UUID,
     current_user: CurrentUser,
     db: DbSession,
@@ -313,8 +329,27 @@ async def _auto_match_soft_lead(db: DbSession, soft_lead: SoftLead) -> bool:
         )
     )
 
-    # TODO: Add language filtering when languages are properly set up
-    # TODO: Add service area filtering when areas are properly set up
+    # Language preference filtering
+    # Find professionals who speak the preferred language
+    if soft_lead.preferred_language:
+        # Subquery to find professionals with matching language
+        lang_subquery = (
+            select(ProfessionalLanguage.professional_id)
+            .join(Language, ProfessionalLanguage.language_id == Language.id)
+            .where(Language.code == soft_lead.preferred_language)
+        )
+        query = query.where(ProfessionalProfile.id.in_(lang_subquery))
+
+    # Service area filtering by state
+    # Find professionals who service the borrower's state
+    if soft_lead.property_state:
+        # Subquery to find professionals with matching service area (by state)
+        area_subquery = (
+            select(ProfessionalServiceArea.professional_id)
+            .join(County, ProfessionalServiceArea.county_id == County.id)
+            .where(County.state_code == soft_lead.property_state.upper())
+        )
+        query = query.where(ProfessionalProfile.id.in_(area_subquery))
 
     # Order by rating (best first)
     query = query.order_by(

@@ -1,11 +1,12 @@
 from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from src.app.core.dependencies import DbSession, CurrentUser, CurrentProfessional, CurrentUserOptional
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.user import User
 from src.app.models.professional import (
     ProfessionalProfile,
@@ -33,7 +34,9 @@ router = APIRouter()
 
 
 @router.get("", response_model=ProfessionalGridResponse)
+@limiter.limit(RATE_LIMITS["api_read"])
 async def list_professionals(
+    request: Request,
     db: DbSession,
     current_user: CurrentUserOptional,
     # Filtering
@@ -196,7 +199,8 @@ async def list_professionals(
 
 
 @router.get("/{professional_id}", response_model=ProfessionalResponse)
-async def get_professional(professional_id: UUID, db: DbSession):
+@limiter.limit(RATE_LIMITS["api_read"])
+async def get_professional(request: Request, professional_id: UUID, db: DbSession):
     """Get detailed profile for a specific professional."""
     query = (
         select(ProfessionalProfile)
@@ -266,7 +270,9 @@ async def get_professional(professional_id: UUID, db: DbSession):
 
 
 @router.put("/me", response_model=ProfessionalResponse)
+@limiter.limit(RATE_LIMITS["api_write"])
 async def update_my_profile(
+    request: Request,
     updates: ProfessionalUpdate,
     current_user: CurrentProfessional,
     db: DbSession,
@@ -337,11 +343,13 @@ async def update_my_profile(
     await db.commit()
 
     # Return updated profile
-    return await get_professional(professional.id, db)
+    return await get_professional(request, professional.id, db)
 
 
 @router.patch("/me/status")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def update_my_status(
+    request: Request,
     status_update: StatusUpdateRequest,
     current_user: CurrentProfessional,
     db: DbSession,
@@ -389,7 +397,9 @@ async def update_my_status(
 
 
 @router.post("/me/go-online")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def go_online(
+    request: Request,
     current_user: CurrentProfessional,
     db: DbSession,
 ):
@@ -447,7 +457,9 @@ async def go_online(
 
 
 @router.post("/me/go-offline")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def go_offline(
+    request: Request,
     current_user: CurrentProfessional,
     db: DbSession,
 ):
@@ -485,7 +497,9 @@ async def go_offline(
 
 
 @router.get("/{professional_id}/baseball-card")
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_baseball_card(
+    request: Request,
     professional_id: UUID,
     db: DbSession,
 ):
@@ -584,7 +598,9 @@ async def get_baseball_card(
 
 
 @router.get("/{professional_id}/verify-nmls")
+@limiter.limit(RATE_LIMITS["api_read"])
 async def verify_nmls(
+    request: Request,
     professional_id: UUID,
     db: DbSession,
 ):

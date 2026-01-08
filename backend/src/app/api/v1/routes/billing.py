@@ -16,8 +16,12 @@ from fastapi import APIRouter, HTTPException, Request, Header, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+import stripe
+from redis.exceptions import RedisError
+
 from src.app.config import settings
 from src.app.core.dependencies import DbSession, CurrentProfessional
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.professional import ProfessionalProfile, SubscriptionTier
 from src.app.models.billing import Subscription, BidWallet, BidTransaction, SubscriptionStatus
 from src.app.integrations.stripe import get_stripe_service
@@ -82,14 +86,17 @@ class BillingPortalResponse(BaseModel):
 # ==================== Routes ====================
 
 @router.get("/plans", response_model=List[SubscriptionPlanResponse])
-async def list_subscription_plans():
+@limiter.limit(RATE_LIMITS["api_read"])
+async def list_subscription_plans(request: Request):
     """Get all available subscription plans with pricing and features."""
     stripe_service = get_stripe_service()
     return stripe_service.get_tier_pricing()
 
 
 @router.get("/subscription", response_model=Optional[SubscriptionResponse])
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_my_subscription(
+    request: Request,
     current_user: CurrentProfessional,
     db: DbSession,
 ):
@@ -115,8 +122,10 @@ async def get_my_subscription(
 
 
 @router.post("/subscription", response_model=CreateSubscriptionResponse)
+@limiter.limit(RATE_LIMITS["billing"])
 async def create_subscription(
-    request: CreateSubscriptionRequest,
+    request: Request,
+    body: CreateSubscriptionRequest,
     current_user: CurrentProfessional,
     db: DbSession,
 ):
@@ -140,10 +149,10 @@ async def create_subscription(
         if existing.stripe_subscription_id:
             upgrade_result = await stripe_service.update_subscription(
                 existing.stripe_subscription_id,
-                request.tier,
+                body.tier,
             )
 
-            existing.tier = request.tier
+            existing.tier = body.tier
             existing.current_period_end = upgrade_result["current_period_end"]
             await db.commit()
 
@@ -169,13 +178,13 @@ async def create_subscription(
     # Create subscription in Stripe
     sub_result = await stripe_service.create_subscription(
         customer_id=customer_id,
-        tier=request.tier,
+        tier=body.tier,
         trial_days=14 if not existing else 0,  # Trial only for first subscription
     )
 
     # Create or update subscription record
     if existing:
-        existing.tier = request.tier
+        existing.tier = body.tier
         existing.stripe_subscription_id = sub_result["subscription_id"]
         existing.status = SubscriptionStatus.PENDING
         existing.current_period_end = sub_result["current_period_end"]
@@ -183,7 +192,7 @@ async def create_subscription(
         subscription = Subscription(
             professional_id=professional.id,
             stripe_subscription_id=sub_result["subscription_id"],
-            tier=request.tier,
+            tier=body.tier,
             status=SubscriptionStatus.PENDING,
             current_period_end=sub_result["current_period_end"],
         )
@@ -200,7 +209,9 @@ async def create_subscription(
 
 
 @router.post("/subscription/cancel")
+@limiter.limit(RATE_LIMITS["billing"])
 async def cancel_subscription(
+    request: Request,
     current_user: CurrentProfessional,
     db: DbSession,
 ):
@@ -236,7 +247,9 @@ async def cancel_subscription(
 
 
 @router.post("/subscription/reactivate")
+@limiter.limit(RATE_LIMITS["billing"])
 async def reactivate_subscription(
+    request: Request,
     current_user: CurrentProfessional,
     db: DbSession,
 ):
@@ -274,7 +287,9 @@ async def reactivate_subscription(
 # ==================== Bid Wallet ====================
 
 @router.get("/wallet", response_model=BidWalletResponse)
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_bid_wallet(
+    request: Request,
     current_user: CurrentProfessional,
     db: DbSession,
 ):
@@ -307,8 +322,10 @@ async def get_bid_wallet(
 
 
 @router.post("/wallet/deposit", response_model=DepositResponse)
+@limiter.limit(RATE_LIMITS["billing"])
 async def create_deposit(
-    request: DepositRequest,
+    request: Request,
+    body: DepositRequest,
     current_user: CurrentProfessional,
     db: DbSession,
 ):
@@ -335,7 +352,7 @@ async def create_deposit(
     # Create checkout session
     checkout_url = await stripe_service.create_bid_deposit_session(
         customer_id=customer_id,
-        amount_dollars=request.amount,
+        amount_dollars=body.amount,
         professional_id=professional.id,
         success_url=f"{settings.frontend_url}/dashboard/billing?deposit=success",
         cancel_url=f"{settings.frontend_url}/dashboard/billing?deposit=cancelled",
@@ -345,8 +362,10 @@ async def create_deposit(
 
 
 @router.put("/bid-settings")
+@limiter.limit(RATE_LIMITS["billing"])
 async def update_bid_settings(
-    request: UpdateBidRequest,
+    request: Request,
+    body: UpdateBidRequest,
     current_user: CurrentProfessional,
     db: DbSession,
 ):
@@ -360,17 +379,17 @@ async def update_bid_settings(
     result = await db.execute(query)
     wallet = result.scalar_one_or_none()
 
-    if request.bid_amount > 0:
-        if not wallet or wallet.available_credits < request.bid_amount:
+    if body.bid_amount > 0:
+        if not wallet or wallet.available_credits < body.bid_amount:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Insufficient wallet balance to set this bid amount",
             )
 
     # Update professional's bid settings
-    professional.current_bid_amount = request.bid_amount
-    if request.daily_budget is not None:
-        professional.daily_bid_budget = request.daily_budget
+    professional.current_bid_amount = body.bid_amount
+    if body.daily_budget is not None:
+        professional.daily_bid_budget = body.daily_budget
 
     await db.commit()
 
@@ -378,7 +397,7 @@ async def update_bid_settings(
     try:
         from src.app.core.cache import grid_cache
         await grid_cache.delete_pattern("*")  # Clear all grid cache entries
-    except Exception:
+    except RedisError:
         pass  # Cache invalidation is best-effort
 
     return {
@@ -388,7 +407,9 @@ async def update_bid_settings(
 
 
 @router.post("/portal", response_model=BillingPortalResponse)
+@limiter.limit(RATE_LIMITS["billing"])
 async def create_billing_portal_session(
+    request: Request,
     current_user: CurrentProfessional,
     db: DbSession,
 ):
@@ -437,7 +458,7 @@ async def stripe_webhook(
 
     try:
         event = stripe_service.construct_webhook_event(payload, stripe_signature)
-    except Exception as e:
+    except (stripe.error.SignatureVerificationError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     event_type = event["type"]
@@ -520,7 +541,7 @@ async def _handle_subscription_updated(db: DbSession, data: dict):
             try:
                 from src.app.core.cache import grid_cache
                 await grid_cache.delete_pattern("*")
-            except Exception:
+            except RedisError:
                 pass
 
 
@@ -552,7 +573,7 @@ async def _handle_subscription_deleted(db: DbSession, data: dict):
             try:
                 from src.app.core.cache import grid_cache
                 await grid_cache.delete_pattern("*")
-            except Exception:
+            except RedisError:
                 pass
 
 

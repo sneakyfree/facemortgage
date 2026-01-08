@@ -1,6 +1,6 @@
 from datetime import datetime
 import uuid
-from fastapi import APIRouter, HTTPException, status, Request
+from fastapi import APIRouter, HTTPException, status, Request, Response
 from sqlalchemy import select
 
 from src.app.config import settings
@@ -23,6 +23,46 @@ from src.app.schemas.user import (
     TokenPair,
     RefreshTokenRequest,
 )
+
+
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+    """Set httpOnly cookies for authentication tokens."""
+    # Access token cookie (30 minutes)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        max_age=settings.access_token_expire_minutes * 60,
+        path="/",
+        domain=settings.cookie_domain,
+    )
+    # Refresh token cookie (7 days)
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
+        path="/api/v1/auth",  # Only sent to auth endpoints
+        domain=settings.cookie_domain,
+    )
+
+
+def clear_auth_cookies(response: Response) -> None:
+    """Clear authentication cookies on logout."""
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        domain=settings.cookie_domain,
+    )
+    response.delete_cookie(
+        key="refresh_token",
+        path="/api/v1/auth",
+        domain=settings.cookie_domain,
+    )
 
 router = APIRouter()
 
@@ -90,7 +130,7 @@ async def register(request: Request, user_in: UserCreate, db: DbSession):
 
 @router.post("/login", response_model=TokenPair)
 @limiter.limit(RATE_LIMITS["auth_login"])
-async def login(request: Request, login_data: LoginRequest, db: DbSession):
+async def login(request: Request, response: Response, login_data: LoginRequest, db: DbSession):
     # Database lookup only - no mock users in any environment
     result = await db.execute(select(User).where(User.email == login_data.email))
     user = result.scalar_one_or_none()
@@ -111,15 +151,38 @@ async def login(request: Request, login_data: LoginRequest, db: DbSession):
     user.last_login_at = datetime.utcnow()
     await db.commit()
 
+    access_token = create_access_token(str(user.id))
+    refresh_token = create_refresh_token(str(user.id))
+
+    # Set httpOnly cookies for secure token storage
+    set_auth_cookies(response, access_token, refresh_token)
+
+    # Also return tokens in body for backwards compatibility with existing clients
     return TokenPair(
-        access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
+        access_token=access_token,
+        refresh_token=refresh_token,
     )
 
 
 @router.post("/refresh", response_model=TokenPair)
-async def refresh_token(refresh_data: RefreshTokenRequest, db: DbSession):
-    payload = decode_token(refresh_data.refresh_token)
+async def refresh_token_endpoint(
+    request: Request,
+    response: Response,
+    db: DbSession,
+    refresh_data: RefreshTokenRequest = None,
+):
+    # Try to get refresh token from cookie first, then from body
+    token = request.cookies.get("refresh_token")
+    if not token and refresh_data:
+        token = refresh_data.refresh_token
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token required",
+        )
+
+    payload = decode_token(token)
 
     if payload is None or payload.type != "refresh":
         raise HTTPException(
@@ -136,9 +199,15 @@ async def refresh_token(refresh_data: RefreshTokenRequest, db: DbSession):
             detail="User not found or inactive",
         )
 
+    new_access_token = create_access_token(str(user.id))
+    new_refresh_token = create_refresh_token(str(user.id))
+
+    # Set new cookies
+    set_auth_cookies(response, new_access_token, new_refresh_token)
+
     return TokenPair(
-        access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
+        access_token=new_access_token,
+        refresh_token=new_refresh_token,
     )
 
 
@@ -148,7 +217,7 @@ async def get_current_user_info(current_user: CurrentUser):
 
 
 @router.post("/logout")
-async def logout():
-    # In a stateless JWT setup, logout is handled client-side
-    # For enhanced security, implement token blacklisting with Redis
+async def logout(response: Response):
+    # Clear auth cookies
+    clear_auth_cookies(response)
     return {"message": "Successfully logged out"}

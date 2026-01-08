@@ -334,5 +334,5 @@ class ModexProvider(ProfessionalDataProvider):
         try:
             await asyncio.sleep(0.01)
             return True
-        except Exception:
+        except (httpx.RequestError, httpx.HTTPStatusError, asyncio.TimeoutError):
             return False

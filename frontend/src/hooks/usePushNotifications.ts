@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import { apiClient } from '@/lib/api/client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -50,7 +51,7 @@ export function usePushNotifications(
   options: UsePushNotificationsOptions = {}
 ): UsePushNotificationsReturn {
   const { onPermissionChange, onSubscriptionChange, onError } = options;
-  const { getAccessToken, user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
 
   const [state, setState] = useState<PushNotificationState>({
     permission: 'default',
@@ -174,25 +175,13 @@ export function usePushNotifications(
         });
       }
 
-      // Send subscription to server
-      const token = getAccessToken();
-      if (token && user) {
+      // Send subscription to server (uses httpOnly cookie auth)
+      if (isAuthenticated && user) {
         try {
-          const response = await fetch(`${API_URL}/api/v1/devices/push-subscription`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              subscription: subscription.toJSON(),
-              user_agent: navigator.userAgent,
-            }),
+          await apiClient.post('/devices/push-subscription', {
+            subscription: subscription.toJSON(),
+            user_agent: navigator.userAgent,
           });
-
-          if (!response.ok) {
-            console.warn('Failed to save subscription to server');
-          }
         } catch (error) {
           console.warn('Failed to save subscription to server:', error);
         }
@@ -214,7 +203,7 @@ export function usePushNotifications(
       onError?.(errorMsg);
       return null;
     }
-  }, [isSupported, getPermissionState, requestPermission, getAccessToken, user, onSubscriptionChange, onError]);
+  }, [isSupported, getPermissionState, requestPermission, isAuthenticated, user, onSubscriptionChange, onError]);
 
   // Unsubscribe from push notifications
   const unsubscribe = useCallback(async (): Promise<boolean> => {
@@ -227,19 +216,11 @@ export function usePushNotifications(
       const subscription = await registration.pushManager.getSubscription();
 
       if (subscription) {
-        // Notify server about unsubscription
-        const token = getAccessToken();
-        if (token) {
+        // Notify server about unsubscription (uses httpOnly cookie auth)
+        if (isAuthenticated) {
           try {
-            await fetch(`${API_URL}/api/v1/devices/push-subscription`, {
-              method: 'DELETE',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                endpoint: subscription.endpoint,
-              }),
+            await apiClient.delete('/devices/push-subscription', {
+              data: { endpoint: subscription.endpoint },
             });
           } catch (error) {
             console.warn('Failed to notify server about unsubscription:', error);
@@ -266,7 +247,7 @@ export function usePushNotifications(
       onError?.(errorMsg);
       return false;
     }
-  }, [isSupported, getAccessToken, onSubscriptionChange, onError]);
+  }, [isSupported, isAuthenticated, onSubscriptionChange, onError]);
 
   // Initialize on mount
   useEffect(() => {

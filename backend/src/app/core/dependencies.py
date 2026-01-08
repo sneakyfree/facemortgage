@@ -1,6 +1,6 @@
 import logging
 from typing import Annotated, Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -14,11 +14,37 @@ from src.app.models.professional import ProfessionalProfile
 logger = logging.getLogger(__name__)
 
 
-security = HTTPBearer()
+# Don't auto-error on missing Bearer header - we'll also check cookies
+security = HTTPBearer(auto_error=False)
+
+
+def get_token_from_request(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials],
+) -> Optional[str]:
+    """
+    Extract access token from request.
+    Priority: 1) Bearer header 2) Cookie
+
+    This allows clients to use either:
+    - Authorization: Bearer <token> header (for API clients, mobile apps)
+    - httpOnly cookie (for web browsers - more secure against XSS)
+    """
+    # First try Bearer header
+    if credentials and credentials.credentials:
+        return credentials.credentials
+
+    # Then try cookie
+    cookie_token = request.cookies.get("access_token")
+    if cookie_token:
+        return cookie_token
+
+    return None
 
 
 async def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
+    request: Request,
+    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(security)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
     credentials_exception = HTTPException(
@@ -27,7 +53,10 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    token = credentials.credentials
+    token = get_token_from_request(request, credentials)
+    if not token:
+        raise credentials_exception
+
     payload = decode_token(token)
 
     if payload is None:
@@ -52,20 +81,33 @@ async def get_current_user(
 
 
 async def get_current_user_optional(
-    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(HTTPBearer(auto_error=False))],
+    request: Request,
+    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(security)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Optional[User]:
-    if credentials is None:
+    token = get_token_from_request(request, credentials)
+    if not token:
         return None
 
     try:
-        return await get_current_user(credentials, db)
-    except HTTPException:
+        payload = decode_token(token)
+        if payload is None or payload.type != "access":
+            return None
+
+        result = await db.execute(select(User).where(User.id == payload.sub))
+        user = result.scalar_one_or_none()
+
+        if user is None or not user.is_active:
+            return None
+
+        return user
+    except Exception:
         return None
 
 
 async def require_professional(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
+    request: Request,
+    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(security)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
     """
@@ -79,7 +121,10 @@ async def require_professional(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    token = credentials.credentials
+    token = get_token_from_request(request, credentials)
+    if not token:
+        raise credentials_exception
+
     payload = decode_token(token)
 
     if payload is None:
@@ -127,7 +172,8 @@ async def require_professional(
 
 
 async def require_borrower(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
+    request: Request,
+    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(security)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
     """
@@ -139,7 +185,10 @@ async def require_borrower(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    token = credentials.credentials
+    token = get_token_from_request(request, credentials)
+    if not token:
+        raise credentials_exception
+
     payload = decode_token(token)
 
     if payload is None:
@@ -183,7 +232,9 @@ async def get_current_user_ws(
     """
     Authenticate a user from a WebSocket connection.
 
-    Unlike HTTP auth, WebSocket tokens are passed as query params or in the first message.
+    WebSocket tokens can be passed via:
+    - Sec-WebSocket-Protocol header (preferred - more secure)
+    - First message after connection
 
     Args:
         token: JWT access token

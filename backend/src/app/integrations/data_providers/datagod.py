@@ -316,5 +316,5 @@ class DatagodProvider(ProfessionalDataProvider):
             # In production, ping the actual API
             await asyncio.sleep(0.01)
             return True
-        except Exception:
+        except (httpx.RequestError, httpx.HTTPStatusError, asyncio.TimeoutError):
             return False

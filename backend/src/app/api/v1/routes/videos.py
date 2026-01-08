@@ -4,11 +4,12 @@ Video upload and serving routes.
 Handles pre-recorded video uploads for professional profiles.
 """
 from uuid import UUID
-from fastapi import APIRouter, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, HTTPException, UploadFile, File, status, Request
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 
 from src.app.core.dependencies import DbSession, CurrentProfessional
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.professional import ProfessionalProfile
 from src.app.services.video_service import get_video_service
 
@@ -16,7 +17,9 @@ router = APIRouter()
 
 
 @router.post("/me/prerecorded")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def upload_prerecorded_video(
+    request: Request,
     current_user: CurrentProfessional,
     db: DbSession,
     file: UploadFile = File(..., description="Video file (MP4, WebM, or MOV)"),
@@ -63,7 +66,9 @@ async def upload_prerecorded_video(
 
 
 @router.delete("/me/prerecorded")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def delete_prerecorded_video(
+    request: Request,
     current_user: CurrentProfessional,
     db: DbSession,
 ):
@@ -101,7 +106,9 @@ async def delete_prerecorded_video(
 
 
 @router.get("/{professional_id}/{filename}")
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_video(
+    request: Request,
     professional_id: str,
     filename: str,
 ):

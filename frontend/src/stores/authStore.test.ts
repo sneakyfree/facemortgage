@@ -1,10 +1,20 @@
 /**
  * authStore tests.
+ *
+ * Note: With httpOnly cookie authentication, tokens are no longer stored in
+ * localStorage or managed by the frontend. Only user info is stored in state.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { useAuthStore } from './authStore';
 import type { User } from '@/types';
+
+// Mock apiClient
+vi.mock('@/lib/api/client', () => ({
+  apiClient: {
+    post: vi.fn().mockResolvedValue({}),
+  },
+}));
 
 // Mock localStorage
 const mockLocalStorage = {
@@ -44,14 +54,14 @@ function createMockUser(overrides: Partial<User> = {}): User {
 
 describe('authStore', () => {
   // Reset store and localStorage before each test
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     mockLocalStorage.clear();
 
     // Reset store state
     const { result } = renderHook(() => useAuthStore());
-    act(() => {
-      result.current.logout();
+    await act(async () => {
+      await result.current.logout();
     });
   });
 
@@ -174,18 +184,16 @@ describe('authStore', () => {
   });
 
   describe('login', () => {
-    it('sets user and stores tokens', () => {
+    it('sets user and authenticates (tokens handled by httpOnly cookies)', () => {
       const { result } = renderHook(() => useAuthStore());
       const mockUser = createMockUser();
 
       act(() => {
-        result.current.login(mockUser, 'access-token-123', 'refresh-token-456');
+        result.current.login(mockUser);
       });
 
       expect(result.current.user).toEqual(mockUser);
       expect(result.current.isAuthenticated).toBe(true);
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('access_token', 'access-token-123');
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('refresh_token', 'refresh-token-456');
     });
 
     it('stores user_id in localStorage', () => {
@@ -193,24 +201,10 @@ describe('authStore', () => {
       const mockUser = createMockUser({ id: 'login-user-789' });
 
       act(() => {
-        result.current.login(mockUser, 'token');
+        result.current.login(mockUser);
       });
 
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith('user_id', 'login-user-789');
-    });
-
-    it('works without refresh token', () => {
-      const { result } = renderHook(() => useAuthStore());
-      const mockUser = createMockUser();
-
-      act(() => {
-        result.current.login(mockUser, 'access-only-token');
-      });
-
-      expect(result.current.isAuthenticated).toBe(true);
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('access_token', 'access-only-token');
-      // refresh_token should not be set if not provided
-      expect(mockLocalStorage.setItem).not.toHaveBeenCalledWith('refresh_token', expect.anything());
     });
 
     it('sets loading to false', () => {
@@ -221,121 +215,75 @@ describe('authStore', () => {
       });
 
       act(() => {
-        result.current.login(createMockUser(), 'token');
+        result.current.login(createMockUser());
       });
 
       expect(result.current.isLoading).toBe(false);
     });
   });
 
-  describe('setTokens', () => {
-    it('stores both tokens', () => {
-      const { result } = renderHook(() => useAuthStore());
-
-      act(() => {
-        result.current.setTokens('new-access-token', 'new-refresh-token');
-      });
-
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('access_token', 'new-access-token');
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('refresh_token', 'new-refresh-token');
-    });
-
-    it('stores only access token when refresh is not provided', () => {
-      const { result } = renderHook(() => useAuthStore());
-
-      act(() => {
-        result.current.setTokens('access-only');
-      });
-
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('access_token', 'access-only');
-    });
-
-    it('does not change user state', () => {
-      const { result } = renderHook(() => useAuthStore());
-      const mockUser = createMockUser();
-
-      act(() => {
-        result.current.setUser(mockUser);
-      });
-
-      act(() => {
-        result.current.setTokens('new-token');
-      });
-
-      // User should remain unchanged
-      expect(result.current.user).toEqual(mockUser);
-    });
-  });
-
   describe('logout', () => {
-    it('clears user state', () => {
+    it('clears user state', async () => {
       const { result } = renderHook(() => useAuthStore());
 
       act(() => {
-        result.current.login(createMockUser(), 'token', 'refresh');
+        result.current.login(createMockUser());
       });
 
       expect(result.current.isAuthenticated).toBe(true);
 
-      act(() => {
-        result.current.logout();
+      await act(async () => {
+        await result.current.logout();
       });
 
       expect(result.current.user).toBe(null);
       expect(result.current.isAuthenticated).toBe(false);
     });
 
-    it('removes tokens from localStorage', () => {
+    it('removes user_id from localStorage', async () => {
       const { result } = renderHook(() => useAuthStore());
 
       act(() => {
-        result.current.login(createMockUser(), 'token', 'refresh');
+        result.current.login(createMockUser());
       });
 
       // Clear mock calls from login
       mockLocalStorage.removeItem.mockClear();
 
-      act(() => {
-        result.current.logout();
+      await act(async () => {
+        await result.current.logout();
       });
 
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('access_token');
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('refresh_token');
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('user_id');
     });
 
-    it('sets loading to false', () => {
+    it('calls logout endpoint to clear httpOnly cookies', async () => {
+      const { apiClient } = await import('@/lib/api/client');
+      const { result } = renderHook(() => useAuthStore());
+
+      act(() => {
+        result.current.login(createMockUser());
+      });
+
+      await act(async () => {
+        await result.current.logout();
+      });
+
+      expect(apiClient.post).toHaveBeenCalledWith('/auth/logout');
+    });
+
+    it('sets loading to false', async () => {
       const { result } = renderHook(() => useAuthStore());
 
       act(() => {
         result.current.setLoading(true);
-        result.current.logout();
+      });
+
+      await act(async () => {
+        await result.current.logout();
       });
 
       expect(result.current.isLoading).toBe(false);
-    });
-  });
-
-  describe('getAccessToken', () => {
-    it('returns access token from localStorage', () => {
-      const { result } = renderHook(() => useAuthStore());
-
-      mockLocalStorage.store['access_token'] = 'stored-access-token';
-
-      const token = result.current.getAccessToken();
-
-      expect(token).toBe('stored-access-token');
-      expect(mockLocalStorage.getItem).toHaveBeenCalledWith('access_token');
-    });
-
-    it('returns null when no token exists', () => {
-      const { result } = renderHook(() => useAuthStore());
-
-      mockLocalStorage.store = {};
-
-      const token = result.current.getAccessToken();
-
-      expect(token).toBe(null);
     });
   });
 
@@ -345,7 +293,7 @@ describe('authStore', () => {
       const mockUser = createMockUser();
 
       act(() => {
-        result.current.login(mockUser, 'token');
+        result.current.login(mockUser);
       });
 
       // Check that persist middleware would save these fields
@@ -356,17 +304,17 @@ describe('authStore', () => {
   });
 
   describe('combined operations', () => {
-    it('handles login then logout', () => {
+    it('handles login then logout', async () => {
       const { result } = renderHook(() => useAuthStore());
 
       act(() => {
-        result.current.login(createMockUser(), 'token', 'refresh');
+        result.current.login(createMockUser());
       });
 
       expect(result.current.isAuthenticated).toBe(true);
 
-      act(() => {
-        result.current.logout();
+      await act(async () => {
+        await result.current.logout();
       });
 
       expect(result.current.isAuthenticated).toBe(false);
@@ -380,33 +328,16 @@ describe('authStore', () => {
       const user2 = createMockUser({ id: 'user-2', email: 'user2@test.com' });
 
       act(() => {
-        result.current.login(user1, 'token-1');
+        result.current.login(user1);
       });
 
       expect(result.current.user?.email).toBe('user1@test.com');
 
       act(() => {
-        result.current.login(user2, 'token-2');
+        result.current.login(user2);
       });
 
       expect(result.current.user?.email).toBe('user2@test.com');
-    });
-
-    it('handles token refresh', () => {
-      const { result } = renderHook(() => useAuthStore());
-
-      act(() => {
-        result.current.login(createMockUser(), 'old-token', 'old-refresh');
-      });
-
-      act(() => {
-        result.current.setTokens('new-token', 'new-refresh');
-      });
-
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('access_token', 'new-token');
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('refresh_token', 'new-refresh');
-      // User should still be logged in
-      expect(result.current.isAuthenticated).toBe(true);
     });
   });
 

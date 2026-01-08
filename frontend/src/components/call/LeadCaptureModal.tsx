@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { X, User, Mail, Phone, CheckCircle } from 'lucide-react';
 import { callsApi, CaptureLeadData } from '@/lib/api/endpoints';
+import { useFocusTrap, useEscapeKey } from '@/hooks/useFocusTrap';
 
 interface LeadCaptureModalProps {
   callId: string;
@@ -27,6 +28,11 @@ export default function LeadCaptureModal({
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Accessibility: Focus trap and escape key handling
+  const modalRef = useFocusTrap<HTMLDivElement>(true);
+  const handleEscape = useCallback(() => onSkip(), [onSkip]);
+  useEscapeKey(true, handleEscape);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -46,9 +52,14 @@ export default function LeadCaptureModal({
   if (isSuccess) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-        <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center">
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h2>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="success-title"
+          className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center"
+        >
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" aria-hidden="true" />
+          <h2 id="success-title" className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h2>
           <p className="text-gray-600">
             {professionalName} will follow up with you shortly.
           </p>
@@ -59,23 +70,33 @@ export default function LeadCaptureModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lead-capture-title"
+        className="bg-white rounded-2xl p-8 max-w-md w-full mx-4"
+      >
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 id="lead-capture-title" className="text-2xl font-bold text-gray-900">
               Stay Connected
             </h2>
             <p className="text-gray-600 mt-1">
               Share your info so {professionalName} can follow up
             </p>
           </div>
-          <button onClick={onSkip} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
+          <button
+            onClick={onSkip}
+            aria-label="Close modal"
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-6 h-6" aria-hidden="true" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+          <div role="alert" className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
             {error}
           </div>
         )}
@@ -86,7 +107,7 @@ export default function LeadCaptureModal({
               Your Name *
             </label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" aria-hidden="true" />
               <input
                 type="text"
                 required
@@ -103,7 +124,7 @@ export default function LeadCaptureModal({
               Email Address *
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" aria-hidden="true" />
               <input
                 type="email"
                 required
@@ -120,7 +141,7 @@ export default function LeadCaptureModal({
               Phone Number
             </label>
             <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" aria-hidden="true" />
               <input
                 type="tel"
                 value={formData.phone || ''}

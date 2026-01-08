@@ -105,7 +105,7 @@ class TestCallInitiation:
 
         assert response.status_code == 404
         data = response.json()
-        assert "not found" in data["detail"].lower()
+        assert "not found" in data["error"]["message"].lower()
 
 
 class TestLeadCaptureAfterAnonymousCall:
@@ -203,7 +203,7 @@ class TestLeadCaptureAfterAnonymousCall:
 
         assert response.status_code == 400
         data = response.json()
-        assert "anonymous" in data["detail"].lower()
+        assert "anonymous" in data["error"]["message"].lower()
 
     @pytest.mark.asyncio
     async def test_capture_lead_fails_for_nonexistent_call(

@@ -3,9 +3,10 @@ API routes for professional statistics from external data providers.
 """
 from datetime import date
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from src.app.integrations.data_providers import get_data_provider, ProfessionalDataProvider
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.schemas.professional_stats import (
     ProfessionalStatsResponse,
     LicenseInfoResponse,
@@ -25,7 +26,9 @@ router = APIRouter()
     summary="Get professional statistics",
     description="Fetch full statistics for a professional by NMLS ID.",
 )
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_professional_stats(
+    request: Request,
     nmls_id: str,
     provider: ProfessionalDataProvider = Depends(get_data_provider),
 ):
@@ -76,7 +79,9 @@ async def get_professional_stats(
     summary="Get baseball card data",
     description="Fetch formatted baseball card data for display.",
 )
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_baseball_card(
+    request: Request,
     nmls_id: str,
     provider: ProfessionalDataProvider = Depends(get_data_provider),
 ):
@@ -129,7 +134,9 @@ async def get_baseball_card(
     summary="Get license information",
     description="Fetch license details for a professional.",
 )
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_license_info(
+    request: Request,
     nmls_id: str,
     provider: ProfessionalDataProvider = Depends(get_data_provider),
 ):
@@ -157,7 +164,9 @@ async def get_license_info(
     summary="Get production history",
     description="Fetch loan production history for a professional.",
 )
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_production_history(
+    request: Request,
     nmls_id: str,
     start_date: Optional[date] = Query(None, description="Start of period"),
     end_date: Optional[date] = Query(None, description="End of period"),
@@ -201,7 +210,9 @@ async def get_production_history(
     summary="Verify NMLS ID",
     description="Verify an NMLS ID is valid and active.",
 )
+@limiter.limit(RATE_LIMITS["api_read"])
 async def verify_nmls(
+    request: Request,
     nmls_id: str,
     provider: ProfessionalDataProvider = Depends(get_data_provider),
 ):
@@ -233,16 +244,18 @@ async def verify_nmls(
     summary="Search professionals",
     description="Search for professionals by name, company, or state.",
 )
+@limiter.limit(RATE_LIMITS["api_read"])
 async def search_professionals(
-    request: ProfessionalSearchRequest,
+    request: Request,
+    body: ProfessionalSearchRequest,
     provider: ProfessionalDataProvider = Depends(get_data_provider),
 ):
     """Search for professionals."""
     results = await provider.search_professionals(
-        name=request.name,
-        company=request.company,
-        state=request.state,
-        limit=request.limit,
+        name=body.name,
+        company=body.company,
+        state=body.state,
+        limit=body.limit,
     )
 
     return [
@@ -266,7 +279,9 @@ async def search_professionals(
     summary="Check provider health",
     description="Check if the data provider API is available.",
 )
+@limiter.limit(RATE_LIMITS["api_read"])
 async def check_provider_health(
+    request: Request,
     provider: ProfessionalDataProvider = Depends(get_data_provider),
 ):
     """Check data provider health."""

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@/types';
+import { apiClient } from '@/lib/api/client';
 
 interface AuthState {
   user: User | null;
@@ -9,10 +10,8 @@ interface AuthState {
 
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
-  login: (user: User, accessToken: string, refreshToken?: string) => void;
-  setTokens: (accessToken: string, refreshToken?: string) => void;
-  logout: () => void;
-  getAccessToken: () => string | null;
+  login: (user: User) => void;
+  logout: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -23,7 +22,7 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
 
       setUser: (user) => {
-        // Also update user_id in localStorage when user is set (e.g., on rehydration)
+        // Store user_id for WebSocket connections (non-sensitive)
         if (typeof window !== 'undefined') {
           if (user?.id) {
             localStorage.setItem('user_id', user.id);
@@ -40,15 +39,11 @@ export const useAuthStore = create<AuthState>()(
 
       setLoading: (isLoading) => set({ isLoading }),
 
-      login: (user, accessToken, refreshToken) => {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('access_token', accessToken);
-          if (user.id) {
-            localStorage.setItem('user_id', user.id);
-          }
-          if (refreshToken) {
-            localStorage.setItem('refresh_token', refreshToken);
-          }
+      login: (user) => {
+        // Tokens are stored in httpOnly cookies by the server
+        // We only store user info in state
+        if (typeof window !== 'undefined' && user.id) {
+          localStorage.setItem('user_id', user.id);
         }
         set({
           user,
@@ -57,19 +52,15 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      setTokens: (accessToken, refreshToken) => {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('access_token', accessToken);
-          if (refreshToken) {
-            localStorage.setItem('refresh_token', refreshToken);
-          }
+      logout: async () => {
+        try {
+          // Call logout endpoint to clear httpOnly cookies on the server
+          await apiClient.post('/auth/logout');
+        } catch {
+          // Ignore errors - cookies might already be expired
         }
-      },
 
-      logout: () => {
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
           localStorage.removeItem('user_id');
         }
         set({
@@ -77,13 +68,6 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
           isLoading: false,
         });
-      },
-
-      getAccessToken: () => {
-        if (typeof window !== 'undefined') {
-          return localStorage.getItem('access_token');
-        }
-        return null;
       },
     }),
     {

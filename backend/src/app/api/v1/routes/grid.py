@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
 from src.app.core.dependencies import DbSession, CurrentUserOptional
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.analytics import GridImpression, GridClick
 
 router = APIRouter()
@@ -58,9 +59,10 @@ class TrackingResponse(BaseModel):
 # ==================== Endpoints ====================
 
 @router.post("/track-impressions", response_model=TrackingResponse)
+@limiter.limit(RATE_LIMITS["api_write"])
 async def track_impressions(
-    request_data: TrackImpressionsRequest,
     request: Request,
+    request_data: TrackImpressionsRequest,
     db: DbSession,
     current_user: CurrentUserOptional,
     x_session_id: Optional[str] = Header(None),
@@ -133,9 +135,10 @@ async def track_impressions(
 
 
 @router.post("/track-click", response_model=TrackingResponse)
+@limiter.limit(RATE_LIMITS["api_write"])
 async def track_click(
-    request_data: TrackClickRequest,
     request: Request,
+    request_data: TrackClickRequest,
     db: DbSession,
     current_user: CurrentUserOptional,
     x_session_id: Optional[str] = Header(None),
@@ -229,7 +232,9 @@ async def track_click(
 
 
 @router.get("/stats/today")
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_today_stats(
+    request: Request,
     db: DbSession,
 ):
     """

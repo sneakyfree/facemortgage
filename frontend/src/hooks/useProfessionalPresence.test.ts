@@ -59,14 +59,23 @@ vi.mock('@/lib/config', () => ({
   },
 }));
 
-// Mock auth store
+// Mock localStorage
+const mockLocalStorage = {
+  getItem: vi.fn((key: string) => {
+    if (key === 'user_id') return 'user-123';
+    return null;
+  }),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+};
+Object.defineProperty(window, 'localStorage', { value: mockLocalStorage });
+
+// Mock auth store (no longer provides getAccessToken - tokens are in httpOnly cookies)
 let mockUser: { professional_profile?: { id: string } } | null = null;
-const mockGetAccessToken = vi.fn(() => 'test-token');
 
 vi.mock('@/stores/authStore', () => ({
   useAuthStore: vi.fn(() => ({
     user: mockUser,
-    getAccessToken: mockGetAccessToken,
   })),
 }));
 
@@ -136,7 +145,8 @@ describe('useProfessionalPresence', () => {
     });
 
     expect(wsInstances.length).toBe(1);
-    expect(wsInstances[0].url).toBe('ws://localhost:8000/ws/presence/pro-123?token=test-token');
+    // URL no longer contains any auth params - auth via httpOnly cookies
+    expect(wsInstances[0].url).toBe('ws://localhost:8000/ws/presence/pro-123');
   });
 
   it('updates state on connection open', async () => {

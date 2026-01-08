@@ -7,12 +7,13 @@ from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from src.app.core.dependencies import DbSession, CurrentUserOptional, CurrentUser
+from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.scheduled_call import ScheduledCall, ScheduledCallStatus
 from src.app.models.professional import ProfessionalProfile
 from src.app.services.email_service import get_email_service
@@ -63,8 +64,10 @@ class CancelScheduledCallRequest(BaseModel):
 # ==================== Routes ====================
 
 @router.post("", response_model=ScheduleCallResponse)
+@limiter.limit(RATE_LIMITS["api_write"])
 async def schedule_call(
-    request: ScheduleCallRequest,
+    request: Request,
+    body: ScheduleCallRequest,
     current_user: CurrentUserOptional,
     db: DbSession,
 ):
@@ -76,7 +79,7 @@ async def schedule_call(
     """
     # Validate scheduled time is in the future (at least 30 minutes)
     min_time = datetime.utcnow() + timedelta(minutes=30)
-    if request.scheduled_for < min_time:
+    if body.scheduled_for < min_time:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Scheduled time must be at least 30 minutes in the future",
@@ -84,7 +87,7 @@ async def schedule_call(
 
     # Validate not too far in the future (max 30 days)
     max_time = datetime.utcnow() + timedelta(days=30)
-    if request.scheduled_for > max_time:
+    if body.scheduled_for > max_time:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot schedule more than 30 days in advance",
@@ -94,7 +97,7 @@ async def schedule_call(
     query = (
         select(ProfessionalProfile)
         .options(selectinload(ProfessionalProfile.user))
-        .where(ProfessionalProfile.id == request.professional_id)
+        .where(ProfessionalProfile.id == body.professional_id)
     )
     result = await db.execute(query)
     professional = result.scalar_one_or_none()
@@ -108,14 +111,14 @@ async def schedule_call(
     # Create scheduled call
     scheduled_call = ScheduledCall(
         borrower_id=current_user.id if current_user else None,
-        professional_id=request.professional_id,
-        contact_name=request.name,
-        contact_email=request.email,
-        contact_phone=request.phone,
-        scheduled_for=request.scheduled_for,
-        timezone=request.timezone,
-        loan_purpose=request.loan_purpose,
-        notes=request.notes,
+        professional_id=body.professional_id,
+        contact_name=body.name,
+        contact_email=body.email,
+        contact_phone=body.phone,
+        scheduled_for=body.scheduled_for,
+        timezone=body.timezone,
+        loan_purpose=body.loan_purpose,
+        notes=body.notes,
         status=ScheduledCallStatus.PENDING,
     )
     db.add(scheduled_call)
@@ -135,21 +138,21 @@ async def schedule_call(
 
         # Send emails concurrently
         borrower_email_task = email_service.send_scheduled_call_confirmation(
-            borrower_email=request.email,
-            borrower_name=request.name,
+            borrower_email=body.email,
+            borrower_name=body.name,
             professional_name=professional_name,
             scheduled_date=scheduled_date,
             scheduled_time=scheduled_time,
-            timezone=request.timezone,
+            timezone=body.timezone,
         )
         professional_email_task = email_service.send_scheduled_call_notification(
             professional_email=professional.user.email,
-            borrower_name=request.name,
-            borrower_email=request.email,
+            borrower_name=body.name,
+            borrower_email=body.email,
             scheduled_date=scheduled_date,
             scheduled_time=scheduled_time,
-            timezone=request.timezone,
-            notes=request.notes,
+            timezone=body.timezone,
+            notes=body.notes,
         )
 
         results = await asyncio.gather(borrower_email_task, professional_email_task, return_exceptions=True)
@@ -169,7 +172,9 @@ async def schedule_call(
 
 
 @router.get("/my-scheduled", response_model=list[ScheduledCallDetail])
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_my_scheduled_calls(
+    request: Request,
     current_user: CurrentUser,
     db: DbSession,
 ):
@@ -208,7 +213,9 @@ async def get_my_scheduled_calls(
 
 
 @router.get("/professional/upcoming", response_model=list[ScheduledCallDetail])
+@limiter.limit(RATE_LIMITS["api_read"])
 async def get_professional_scheduled_calls(
+    request: Request,
     current_user: CurrentUser,
     db: DbSession,
 ):
@@ -261,7 +268,9 @@ async def get_professional_scheduled_calls(
 
 
 @router.post("/{scheduled_call_id}/confirm")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def confirm_scheduled_call(
+    request: Request,
     scheduled_call_id: UUID,
     current_user: CurrentUser,
     db: DbSession,
@@ -303,9 +312,11 @@ async def confirm_scheduled_call(
 
 
 @router.post("/{scheduled_call_id}/cancel")
+@limiter.limit(RATE_LIMITS["api_write"])
 async def cancel_scheduled_call(
+    request: Request,
     scheduled_call_id: UUID,
-    request: CancelScheduledCallRequest,
+    body: CancelScheduledCallRequest,
     current_user: CurrentUser,
     db: DbSession,
 ):
@@ -335,8 +346,8 @@ async def cancel_scheduled_call(
 
     # Update status
     scheduled_call.status = ScheduledCallStatus.CANCELLED
-    if request.reason:
-        scheduled_call.notes = f"[CANCELLED] {request.reason}\n\n{scheduled_call.notes or ''}"
+    if body.reason:
+        scheduled_call.notes = f"[CANCELLED] {body.reason}\n\n{scheduled_call.notes or ''}"
     await db.commit()
 
     return {"message": "Scheduled call cancelled", "status": "cancelled"}
