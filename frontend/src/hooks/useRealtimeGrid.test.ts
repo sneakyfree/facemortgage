@@ -5,6 +5,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useRealtimeGrid } from './useRealtimeGrid';
 
+// Mock logger - using hoisted mock pattern
+vi.mock('@/lib/utils', () => ({
+  logger: {
+    log: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
+// Import the mock after declaration
+import { logger as mockLogger } from '@/lib/utils';
+
 // Mock localStorage
 const mockLocalStorage = {
   store: {} as Record<string, string>,
@@ -312,7 +325,7 @@ describe('useRealtimeGrid', () => {
   });
 
   it('handles connected event and resets reconnect attempts', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.mocked(mockLogger.log).mockClear();
 
     renderHook(() => useRealtimeGrid({ enabled: true }));
 
@@ -326,9 +339,7 @@ describe('useRealtimeGrid', () => {
       ws.receiveMessage({ event: 'connected' });
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith('Connected to grid updates WebSocket');
-
-    consoleSpy.mockRestore();
+    expect(mockLogger.log).toHaveBeenCalledWith('Connected to grid updates WebSocket');
   });
 
   it('handles pong event silently', async () => {
@@ -349,7 +360,7 @@ describe('useRealtimeGrid', () => {
   });
 
   it('handles unknown events gracefully', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.mocked(mockLogger.log).mockClear();
 
     renderHook(() => useRealtimeGrid({ enabled: true }));
 
@@ -363,13 +374,11 @@ describe('useRealtimeGrid', () => {
       ws.receiveMessage({ event: 'some_unknown_event', data: 'test' });
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith('Unknown grid event:', 'some_unknown_event');
-
-    consoleSpy.mockRestore();
+    expect(mockLogger.log).toHaveBeenCalledWith('Unknown grid event:', 'some_unknown_event');
   });
 
   it('handles malformed messages', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(mockLogger.error).mockClear();
 
     renderHook(() => useRealtimeGrid({ enabled: true }));
 
@@ -384,12 +393,10 @@ describe('useRealtimeGrid', () => {
       ws.onmessage?.(new MessageEvent('message', { data: 'not json' }));
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(mockLogger.error).toHaveBeenCalledWith(
       'Error parsing WebSocket message:',
       expect.any(Error)
     );
-
-    consoleSpy.mockRestore();
   });
 
   it('sendPing sends a ping message', async () => {
@@ -499,7 +506,7 @@ describe('useRealtimeGrid', () => {
   });
 
   it('logs reconnection attempt on close', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    mockLogger.log.mockClear();
 
     renderHook(() => useRealtimeGrid({ enabled: true }));
 
@@ -516,11 +523,9 @@ describe('useRealtimeGrid', () => {
     });
 
     // Should log reconnection attempt - the format is a single string
-    const reconnectLogs = consoleSpy.mock.calls.filter(
+    const reconnectLogs = mockLogger.log.mock.calls.filter(
       (call) => typeof call[0] === 'string' && call[0].includes('Reconnecting in')
     );
     expect(reconnectLogs.length).toBeGreaterThan(0);
-
-    consoleSpy.mockRestore();
   });
 });

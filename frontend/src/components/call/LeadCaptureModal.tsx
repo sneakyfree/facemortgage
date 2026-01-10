@@ -103,12 +103,13 @@ export default function LeadCaptureModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="lead-name" className="block text-sm font-medium text-gray-700 mb-1">
               Your Name *
             </label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" aria-hidden="true" />
               <input
+                id="lead-name"
                 type="text"
                 required
                 value={formData.name}
@@ -120,12 +121,13 @@ export default function LeadCaptureModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="lead-email" className="block text-sm font-medium text-gray-700 mb-1">
               Email Address *
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" aria-hidden="true" />
               <input
+                id="lead-email"
                 type="email"
                 required
                 value={formData.email}
@@ -137,12 +139,13 @@ export default function LeadCaptureModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="lead-phone" className="block text-sm font-medium text-gray-700 mb-1">
               Phone Number
             </label>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" aria-hidden="true" />
               <input
+                id="lead-phone"
                 type="tel"
                 value={formData.phone || ''}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -153,10 +156,11 @@ export default function LeadCaptureModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="lead-purpose" className="block text-sm font-medium text-gray-700 mb-1">
               What are you looking for?
             </label>
             <select
+              id="lead-purpose"
               value={formData.loan_purpose || ''}
               onChange={(e) => setFormData({ ...formData, loan_purpose: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

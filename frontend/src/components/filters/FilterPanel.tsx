@@ -88,13 +88,14 @@ export default function FilterPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* State Filter */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="filter-state" className="block text-sm font-medium text-gray-700 mb-2">
             State
             {isDetectedState && (
               <span className="ml-1 text-xs text-green-600">(detected)</span>
             )}
           </label>
           <select
+            id="filter-state"
             value={filters.state_code || ''}
             onChange={(e) => setStateCode(e.target.value || undefined)}
             className={cn(
@@ -113,8 +114,9 @@ export default function FilterPanel() {
 
         {/* Professional Type */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Professional Type</label>
+          <label htmlFor="filter-type" className="block text-sm font-medium text-gray-700 mb-2">Professional Type</label>
           <select
+            id="filter-type"
             value={filters.user_type || ''}
             onChange={(e) => setUserType(e.target.value as UserType || undefined)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -130,8 +132,9 @@ export default function FilterPanel() {
 
         {/* Language */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
+          <label htmlFor="filter-language" className="block text-sm font-medium text-gray-700 mb-2">Language</label>
           <select
+            id="filter-language"
             value={filters.language || ''}
             onChange={(e) => setLanguage(e.target.value || undefined)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -147,8 +150,9 @@ export default function FilterPanel() {
 
         {/* Specialty */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Specialty</label>
+          <label htmlFor="filter-specialty" className="block text-sm font-medium text-gray-700 mb-2">Specialty</label>
           <select
+            id="filter-specialty"
             value={filters.specialty || ''}
             onChange={(e) => setSpecialty(e.target.value ? parseInt(e.target.value) : undefined)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -164,8 +168,9 @@ export default function FilterPanel() {
 
         {/* Minimum Rating */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Rating</label>
+          <label htmlFor="filter-rating" className="block text-sm font-medium text-gray-700 mb-2">Minimum Rating</label>
           <select
+            id="filter-rating"
             value={filters.min_rating || ''}
             onChange={(e) => setMinRating(e.target.value ? parseFloat(e.target.value) : undefined)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

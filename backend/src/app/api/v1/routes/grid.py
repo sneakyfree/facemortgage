@@ -56,6 +56,16 @@ class TrackingResponse(BaseModel):
     message: str = "Tracked successfully"
 
 
+class TodayStatsResponse(BaseModel):
+    """Response schema for daily grid statistics."""
+    date: str
+    total_impressions: int
+    total_clicks: int
+    total_calls_initiated: int
+    unique_professionals_shown: int
+    click_through_rate: float
+
+
 # ==================== Endpoints ====================
 
 @router.post("/track-impressions", response_model=TrackingResponse)
@@ -231,16 +241,21 @@ async def track_click(
         )
 
 
-@router.get("/stats/today")
+@router.get("/stats/today", response_model=TodayStatsResponse)
 @limiter.limit(RATE_LIMITS["api_read"])
 async def get_today_stats(
     request: Request,
     db: DbSession,
 ):
     """
-    Get aggregate grid stats for today.
+    Get aggregate grid statistics for today.
 
-    Useful for monitoring and real-time dashboards.
+    Returns metrics useful for monitoring and real-time dashboards:
+    - Total impressions (cards shown)
+    - Total clicks (profile views, call initiations)
+    - Total calls initiated from the grid
+    - Unique professionals shown
+    - Click-through rate (clicks / impressions)
     """
     from sqlalchemy import func
 
@@ -261,14 +276,14 @@ async def get_today_stats(
     total_impressions = row.total_impressions or 0
     total_clicks = row.total_clicks or 0
 
-    return {
-        "date": today.isoformat(),
-        "total_impressions": total_impressions,
-        "total_clicks": total_clicks,
-        "total_calls_initiated": row.total_calls or 0,
-        "unique_professionals_shown": row.unique_professionals_shown or 0,
-        "click_through_rate": (
+    return TodayStatsResponse(
+        date=today.isoformat(),
+        total_impressions=total_impressions,
+        total_clicks=total_clicks,
+        total_calls_initiated=row.total_calls or 0,
+        unique_professionals_shown=row.unique_professionals_shown or 0,
+        click_through_rate=(
             round(total_clicks / total_impressions * 100, 2)
             if total_impressions > 0 else 0
         ),
-    }
+    )

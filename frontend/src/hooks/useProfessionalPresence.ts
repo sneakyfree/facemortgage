@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import type { ProfessionalStatus } from '@/types';
 import { WS_BASE_URL, config } from '@/lib/config';
+import { logger } from '@/lib/utils';
 
 // Map WebSocket status strings to frontend status types
 const STATUS_MAP: Record<string, ProfessionalStatus> = {
@@ -72,10 +73,10 @@ export function useProfessionalPresence(options: UseProfessionalPresenceOptions 
             break;
 
           default:
-            console.log('Unknown presence message:', data.type);
+            logger.log('Unknown presence message:', data.type);
         }
       } catch (error) {
-        console.error('Error parsing presence message:', error);
+        logger.error('Error parsing presence message:', error);
       }
     },
     [onStatusChange, onError]
@@ -104,7 +105,7 @@ export function useProfessionalPresence(options: UseProfessionalPresenceOptions 
 
   const connect = useCallback(() => {
     if (!user?.professional_profile?.id) {
-      console.warn('Cannot connect: No professional profile');
+      logger.warn('Cannot connect: No professional profile');
       return;
     }
 
@@ -121,7 +122,7 @@ export function useProfessionalPresence(options: UseProfessionalPresenceOptions 
       wsRef.current = new WebSocket(url);
 
       wsRef.current.onopen = () => {
-        console.log('Professional presence WebSocket connected');
+        logger.log('Professional presence WebSocket connected');
         setState((prev) => ({
           ...prev,
           isConnected: true,
@@ -135,7 +136,7 @@ export function useProfessionalPresence(options: UseProfessionalPresenceOptions 
       wsRef.current.onmessage = handleMessage;
 
       wsRef.current.onclose = (event) => {
-        console.log('Presence WebSocket closed:', event.code, event.reason);
+        logger.log('Presence WebSocket closed:', event.code, event.reason);
         stopHeartbeat();
         setState((prev) => ({
           ...prev,
@@ -148,7 +149,7 @@ export function useProfessionalPresence(options: UseProfessionalPresenceOptions 
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
           reconnectAttempts.current++;
 
-          console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current})`);
+          logger.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current})`);
           reconnectTimeoutRef.current = setTimeout(connect, delay);
         } else {
           setState((prev) => ({
@@ -160,14 +161,14 @@ export function useProfessionalPresence(options: UseProfessionalPresenceOptions 
       };
 
       wsRef.current.onerror = (error) => {
-        console.error('Presence WebSocket error:', error);
+        logger.error('Presence WebSocket error:', error);
         setState((prev) => ({
           ...prev,
           error: 'WebSocket connection error',
         }));
       };
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
+      logger.error('Failed to create WebSocket connection:', error);
       setState((prev) => ({
         ...prev,
         error: 'Failed to connect',

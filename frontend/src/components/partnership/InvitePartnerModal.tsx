@@ -103,10 +103,11 @@ export default function InvitePartnerModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="invite-name" className="block text-sm font-medium text-gray-700 mb-1">
               Realtor Name *
             </label>
             <input
+              id="invite-name"
               type="text"
               required
               value={formData.realtor_name}
@@ -117,10 +118,11 @@ export default function InvitePartnerModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="invite-email" className="block text-sm font-medium text-gray-700 mb-1">
               Email Address *
             </label>
             <input
+              id="invite-email"
               type="email"
               required
               value={formData.realtor_email}
@@ -131,10 +133,11 @@ export default function InvitePartnerModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="invite-phone" className="block text-sm font-medium text-gray-700 mb-1">
               Phone Number
             </label>
             <input
+              id="invite-phone"
               type="tel"
               value={formData.realtor_phone || ''}
               onChange={(e) => setFormData({ ...formData, realtor_phone: e.target.value })}
@@ -144,10 +147,11 @@ export default function InvitePartnerModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="invite-company" className="block text-sm font-medium text-gray-700 mb-1">
               Company/Brokerage
             </label>
             <input
+              id="invite-company"
               type="text"
               value={formData.realtor_company || ''}
               onChange={(e) => setFormData({ ...formData, realtor_company: e.target.value })}

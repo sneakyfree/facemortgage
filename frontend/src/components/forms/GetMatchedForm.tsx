@@ -116,7 +116,7 @@ export default function GetMatchedForm() {
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+        <div role="alert" className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
           {error}
         </div>
       )}
@@ -127,8 +127,9 @@ export default function GetMatchedForm() {
             <h3 className="font-medium text-gray-900">Contact Information</h3>
 
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Name *</label>
+              <label htmlFor="matched-name" className="block text-sm text-gray-700 mb-1">Name *</label>
               <input
+                id="matched-name"
                 type="text"
                 required
                 value={formData.name}
@@ -139,8 +140,9 @@ export default function GetMatchedForm() {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Email *</label>
+              <label htmlFor="matched-email" className="block text-sm text-gray-700 mb-1">Email *</label>
               <input
+                id="matched-email"
                 type="email"
                 required
                 value={formData.email}
@@ -151,8 +153,9 @@ export default function GetMatchedForm() {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Phone</label>
+              <label htmlFor="matched-phone" className="block text-sm text-gray-700 mb-1">Phone</label>
               <input
+                id="matched-phone"
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -177,8 +180,9 @@ export default function GetMatchedForm() {
             <h3 className="font-medium text-gray-900">What are you looking for?</h3>
 
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Loan Purpose</label>
+              <label htmlFor="matched-purpose" className="block text-sm text-gray-700 mb-1">Loan Purpose</label>
               <select
+                id="matched-purpose"
                 value={formData.loan_purpose}
                 onChange={(e) => setFormData({ ...formData, loan_purpose: e.target.value })}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -193,8 +197,9 @@ export default function GetMatchedForm() {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Estimated Loan Amount</label>
+              <label htmlFor="matched-amount" className="block text-sm text-gray-700 mb-1">Estimated Loan Amount</label>
               <select
+                id="matched-amount"
                 value={formData.estimated_amount}
                 onChange={(e) => setFormData({ ...formData, estimated_amount: e.target.value })}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -210,8 +215,9 @@ export default function GetMatchedForm() {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Property State</label>
+              <label htmlFor="matched-state" className="block text-sm text-gray-700 mb-1">Property State</label>
               <select
+                id="matched-state"
                 value={formData.property_state}
                 onChange={(e) => setFormData({ ...formData, property_state: e.target.value })}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -249,8 +255,9 @@ export default function GetMatchedForm() {
             <h3 className="font-medium text-gray-900">Preferences</h3>
 
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Preferred Language</label>
+              <label htmlFor="matched-language" className="block text-sm text-gray-700 mb-1">Preferred Language</label>
               <select
+                id="matched-language"
                 value={formData.preferred_language}
                 onChange={(e) => setFormData({ ...formData, preferred_language: e.target.value })}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -267,8 +274,9 @@ export default function GetMatchedForm() {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-700 mb-1">When do you need help?</label>
+              <label htmlFor="matched-timeframe" className="block text-sm text-gray-700 mb-1">When do you need help?</label>
               <select
+                id="matched-timeframe"
                 value={formData.timeframe}
                 onChange={(e) => setFormData({ ...formData, timeframe: e.target.value })}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

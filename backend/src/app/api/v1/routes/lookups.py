@@ -8,6 +8,7 @@ from src.app.core.dependencies import DbSession
 from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.professional import Specialty, Language, County
 from src.app.schemas.professional import SpecialtyResponse, LanguageResponse, CountyResponse
+from src.app.config import settings
 
 
 # US State mappings
@@ -122,7 +123,7 @@ def get_client_ip(request: Request) -> Optional[str]:
 
 async def reverse_geocode_coordinates(lat: float, lon: float) -> GeoLocationResponse:
     """Reverse geocode coordinates to get location details."""
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with httpx.AsyncClient(timeout=settings.external_api_timeout_seconds) as client:
         try:
             # Use BigDataCloud free API (no key required)
             response = await client.get(
@@ -154,7 +155,7 @@ async def reverse_geocode_coordinates(lat: float, lon: float) -> GeoLocationResp
                     longitude=lon,
                     source="coordinates"
                 )
-        except Exception:
+        except (httpx.RequestError, httpx.HTTPStatusError, ValueError, KeyError):
             pass
 
     return GeoLocationResponse(
@@ -170,7 +171,7 @@ async def geolocate_ip(ip: str) -> GeoLocationResponse:
     if ip in ("127.0.0.1", "localhost", "::1") or ip.startswith("192.168.") or ip.startswith("10.") or ip.startswith("172."):
         return GeoLocationResponse(source="ip")
 
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with httpx.AsyncClient(timeout=settings.external_api_timeout_seconds) as client:
         # Try ip-api.com first (free, no key required, 45 requests/minute)
         try:
             response = await client.get(
@@ -191,7 +192,7 @@ async def geolocate_ip(ip: str) -> GeoLocationResponse:
                         longitude=data.get("lon"),
                         source="ip"
                     )
-        except Exception:
+        except (httpx.RequestError, httpx.HTTPStatusError, ValueError, KeyError):
             pass
 
         # Fallback to ipapi.co (free tier)
@@ -211,7 +212,7 @@ async def geolocate_ip(ip: str) -> GeoLocationResponse:
                         longitude=data.get("longitude"),
                         source="ip"
                     )
-        except Exception:
+        except (httpx.RequestError, httpx.HTTPStatusError, ValueError, KeyError):
             pass
 
     return GeoLocationResponse(source="ip")

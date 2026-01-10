@@ -45,6 +45,10 @@ class User(Base):
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    # Account lockout fields for brute force protection
+    failed_login_attempts: Mapped[int] = mapped_column(default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     # Push notification settings
     # Using JSON instead of JSONB for SQLite test compatibility
     device_tokens: Mapped[list | None] = mapped_column(JSON, nullable=True)

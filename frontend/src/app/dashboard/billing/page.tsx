@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
+import { logger } from '@/lib/utils';
 
 interface SubscriptionPlan {
   tier: string;
@@ -61,7 +62,7 @@ function BillingPageContent() {
         setSubscription(subRes.data);
         setWallet(walletRes.data);
       } catch (error) {
-        console.error('Failed to fetch billing data:', error);
+        logger.error('Failed to fetch billing data:', error);
       } finally {
         setLoading(false);
       }

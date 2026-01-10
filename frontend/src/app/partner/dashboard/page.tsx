@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Users, TrendingUp, Phone, Plus, ExternalLink, Copy, Check } from 'lucide-react';
 import { partnershipsApi, PartnershipDetail, ReferralDetail } from '@/lib/api/endpoints';
 import { ReferralModal } from '@/components/partnership';
+import { logger } from '@/lib/utils';
 
 interface PartnerStats {
   total: number;
@@ -48,7 +49,7 @@ export default function RealtorDashboard() {
       }
       setStats({ total, converted, pending });
     } catch (error) {
-      console.error('Failed to load partnerships:', error);
+      logger.error('Failed to load partnerships:', error);
     } finally {
       setIsLoading(false);
     }
@@ -61,7 +62,7 @@ export default function RealtorDashboard() {
       setCopiedWidget(true);
       setTimeout(() => setCopiedWidget(false), 2000);
     } catch (error) {
-      console.error('Failed to copy widget code:', error);
+      logger.error('Failed to copy widget code:', error);
     }
   };
 

@@ -5,6 +5,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useProfessionalPresence } from './useProfessionalPresence';
 
+// Mock logger - using hoisted mock pattern
+vi.mock('@/lib/utils', () => ({
+  logger: {
+    log: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
+// Import the mock after declaration
+import { logger as mockLogger } from '@/lib/utils';
+
 // Track WebSocket instances for testing
 let wsInstances: MockWebSocket[] = [];
 
@@ -115,7 +128,7 @@ describe('useProfessionalPresence', () => {
   });
 
   it('does not connect without professional profile', () => {
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.mocked(mockLogger.warn).mockClear();
 
     mockUser = { professional_profile: undefined };
 
@@ -125,10 +138,8 @@ describe('useProfessionalPresence', () => {
       result.current.goOnline();
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith('Cannot connect: No professional profile');
+    expect(mockLogger.warn).toHaveBeenCalledWith('Cannot connect: No professional profile');
     expect(wsInstances.length).toBe(0);
-
-    consoleSpy.mockRestore();
   });
 
   it('connects with professional profile', async () => {
@@ -276,7 +287,7 @@ describe('useProfessionalPresence', () => {
   });
 
   it('handles unknown message types gracefully', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.mocked(mockLogger.log).mockClear();
     mockUser = { professional_profile: { id: 'pro-unk' } };
 
     const { result } = renderHook(() => useProfessionalPresence());
@@ -295,9 +306,7 @@ describe('useProfessionalPresence', () => {
       ws.receiveMessage({ type: 'some_unknown_type' });
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith('Unknown presence message:', 'some_unknown_type');
-
-    consoleSpy.mockRestore();
+    expect(mockLogger.log).toHaveBeenCalledWith('Unknown presence message:', 'some_unknown_type');
   });
 
   it('starts heartbeat on connection', async () => {
@@ -530,7 +539,7 @@ describe('useProfessionalPresence', () => {
   });
 
   it('handles WebSocket close and attempts reconnection', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.mocked(mockLogger.log).mockClear();
     mockUser = { professional_profile: { id: 'pro-reconn' } };
 
     const { result } = renderHook(() => useProfessionalPresence());
@@ -554,12 +563,10 @@ describe('useProfessionalPresence', () => {
     expect(result.current.currentStatus).toBe('offline');
 
     // Should log reconnection attempt - the format is a single string
-    const reconnectLogs = consoleSpy.mock.calls.filter(
+    const reconnectLogs = vi.mocked(mockLogger.log).mock.calls.filter(
       (call) => typeof call[0] === 'string' && call[0].includes('Reconnecting in')
     );
     expect(reconnectLogs.length).toBeGreaterThan(0);
-
-    consoleSpy.mockRestore();
   });
 
   it('sets error after max reconnection attempts', async () => {
@@ -595,7 +602,7 @@ describe('useProfessionalPresence', () => {
   });
 
   it('handles WebSocket error', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(mockLogger.error).mockClear();
     mockUser = { professional_profile: { id: 'pro-wserr' } };
 
     const { result } = renderHook(() => useProfessionalPresence());
@@ -615,9 +622,7 @@ describe('useProfessionalPresence', () => {
     });
 
     expect(result.current.error).toBe('WebSocket connection error');
-    expect(consoleSpy).toHaveBeenCalledWith('Presence WebSocket error:', expect.any(Event));
-
-    consoleSpy.mockRestore();
+    expect(mockLogger.error).toHaveBeenCalledWith('Presence WebSocket error:', expect.any(Event));
   });
 
   it('cleans up on unmount', async () => {
@@ -641,7 +646,7 @@ describe('useProfessionalPresence', () => {
   });
 
   it('handles malformed messages', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(mockLogger.error).mockClear();
     mockUser = { professional_profile: { id: 'pro-malformed' } };
 
     const { result } = renderHook(() => useProfessionalPresence());
@@ -661,12 +666,10 @@ describe('useProfessionalPresence', () => {
       ws.onmessage?.(new MessageEvent('message', { data: 'invalid json' }));
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(mockLogger.error).toHaveBeenCalledWith(
       'Error parsing presence message:',
       expect.any(Error)
     );
-
-    consoleSpy.mockRestore();
   });
 
   it('reconnect function reconnects after disconnect', async () => {

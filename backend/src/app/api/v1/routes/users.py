@@ -9,6 +9,8 @@ from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.core.security import verify_password, get_password_hash
 from src.app.schemas.user import UserResponse, UserUpdate
 from src.app.services.storage import get_storage
+from src.app.api.v1.routes.auth import validate_password_strength
+from src.app.config import settings
 
 router = APIRouter()
 
@@ -74,11 +76,12 @@ async def change_password(
             detail="Current password is incorrect",
         )
 
-    # Validate new password
-    if len(password_change.new_password) < 8:
+    # Validate new password strength
+    is_valid, error_msg = validate_password_strength(password_change.new_password)
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password must be at least 8 characters",
+            detail=error_msg,
         )
 
     # Update password
@@ -136,7 +139,45 @@ async def update_notification_settings(
 
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
-MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5MB
+MAX_AVATAR_SIZE = settings.max_avatar_size_mb * 1024 * 1024
+
+# Magic bytes for allowed image types
+IMAGE_MAGIC_BYTES = {
+    b'\xFF\xD8\xFF': "image/jpeg",           # JPEG
+    b'\x89PNG\r\n\x1a\n': "image/png",       # PNG
+    b'GIF87a': "image/gif",                  # GIF87a
+    b'GIF89a': "image/gif",                  # GIF89a
+    b'RIFF': "image/webp",                   # WebP (need to check for WEBP after)
+}
+
+
+def validate_image_magic_bytes(content: bytes) -> tuple[bool, str, str]:
+    """
+    Validate file content by checking magic bytes.
+
+    Returns:
+        tuple: (is_valid, detected_type, error_message)
+    """
+    if len(content) < 12:
+        return False, "", "File too small to be a valid image"
+
+    # Check JPEG
+    if content[:3] == b'\xFF\xD8\xFF':
+        return True, "image/jpeg", ""
+
+    # Check PNG
+    if content[:8] == b'\x89PNG\r\n\x1a\n':
+        return True, "image/png", ""
+
+    # Check GIF
+    if content[:6] in (b'GIF87a', b'GIF89a'):
+        return True, "image/gif", ""
+
+    # Check WebP (RIFF....WEBP)
+    if content[:4] == b'RIFF' and content[8:12] == b'WEBP':
+        return True, "image/webp", ""
+
+    return False, "", "File content does not match any allowed image format"
 
 
 @router.post("/me/avatar")
@@ -162,6 +203,14 @@ async def upload_avatar(
 
     # Read file content
     content = await file.read()
+
+    # Validate magic bytes to prevent file type spoofing
+    is_valid_magic, detected_type, magic_error = validate_image_magic_bytes(content)
+    if not is_valid_magic:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=magic_error,
+        )
 
     # Check file size
     if len(content) > MAX_AVATAR_SIZE:

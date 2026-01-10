@@ -7,6 +7,7 @@ import { useFocusTrap, useEscapeKey } from '@/hooks/useFocusTrap';
 import CallControls from './CallControls';
 import PostCallRating from './PostCallRating';
 import LeadCaptureModal from './LeadCaptureModal';
+import { logger } from '@/lib/utils';
 
 interface VideoCallModalProps {
   professionalId: string;
@@ -35,10 +36,10 @@ export default function VideoCallModal({
     toggleCamera,
   } = useVideoCall({
     onCallEnded: (pickupTime) => {
-      console.log('Call ended, pickup time:', pickupTime);
+      logger.log('Call ended, pickup time:', pickupTime);
     },
     onError: (error) => {
-      console.error('Call error:', error);
+      logger.error('Call error:', error);
     },
   });
 
@@ -87,7 +88,7 @@ export default function VideoCallModal({
           content: comment,
         });
       } catch (error) {
-        console.error('Failed to submit rating:', error);
+        logger.error('Failed to submit rating:', error);
       }
     }
     onClose();

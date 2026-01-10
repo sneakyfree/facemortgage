@@ -17,6 +17,7 @@ import {
   Star,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
+import { logger } from '@/lib/utils';
 
 interface PlatformStats {
   total_users: number;
@@ -96,7 +97,7 @@ export default function AdminDashboard() {
           const statsRes = await apiClient.get('/admin/stats');
           setStats(statsRes.data);
         } catch (err) {
-          console.error('Failed to fetch admin stats:', err);
+          logger.error('Failed to fetch admin stats:', err);
         }
       }
 
@@ -105,7 +106,7 @@ export default function AdminDashboard() {
           const usersRes = await apiClient.get(`/admin/users?page=1&page_size=50${searchQuery ? `&search=${searchQuery}` : ''}`);
           setUsers(usersRes.data.users);
         } catch (err) {
-          console.error('Failed to fetch users:', err);
+          logger.error('Failed to fetch users:', err);
         }
       }
 
@@ -114,11 +115,11 @@ export default function AdminDashboard() {
           const prosRes = await apiClient.get(`/admin/professionals?page=1&page_size=50${searchQuery ? `&search=${searchQuery}` : ''}`);
           setProfessionals(prosRes.data.professionals);
         } catch (err) {
-          console.error('Failed to fetch professionals:', err);
+          logger.error('Failed to fetch professionals:', err);
         }
       }
     } catch (error) {
-      console.error('Failed to fetch admin data:', error);
+      logger.error('Failed to fetch admin data:', error);
     } finally {
       setLoading(false);
     }
@@ -129,7 +130,7 @@ export default function AdminDashboard() {
       await apiClient.patch(`/admin/users/${userId}/status`, { is_active: isActive });
       fetchData();
     } catch (error) {
-      console.error('Failed to toggle user status:', error);
+      logger.error('Failed to toggle user status:', error);
     }
   }
 
@@ -142,7 +143,7 @@ export default function AdminDashboard() {
       });
       fetchData();
     } catch (error) {
-      console.error('Failed to toggle featured:', error);
+      logger.error('Failed to toggle featured:', error);
     }
   }
 

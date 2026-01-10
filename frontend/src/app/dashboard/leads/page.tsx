@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { leadsApi } from '@/lib/api/endpoints';
 import type { LeadStatus as LeadStatusType } from '@/types';
+import { logger } from '@/lib/utils';
 
 type LeadStatus = 'new' | 'contacted' | 'qualified' | 'proposal_sent' | 'negotiation' | 'won' | 'lost' | 'nurturing';
 
@@ -104,7 +105,7 @@ export default function LeadsDashboard() {
         const statsData = await leadsApi.getStats();
         setStats(statsData);
       } catch (err) {
-        console.error('Failed to fetch lead stats:', err);
+        logger.error('Failed to fetch lead stats:', err);
       }
 
       // Fetch leads
@@ -126,7 +127,7 @@ export default function LeadsDashboard() {
         setLeads(leadsData.leads);
       }
     } catch (error) {
-      console.error('Failed to fetch lead data:', error);
+      logger.error('Failed to fetch lead data:', error);
     } finally {
       setLoading(false);
     }
@@ -145,7 +146,7 @@ export default function LeadsDashboard() {
         fetchData();
       }
     } catch (error) {
-      console.error('Failed to update lead status:', error);
+      logger.error('Failed to update lead status:', error);
     }
   }
 

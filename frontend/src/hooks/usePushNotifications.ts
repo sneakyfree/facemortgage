@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { apiClient } from '@/lib/api/client';
+import { logger } from '@/lib/utils';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -90,7 +91,7 @@ export function usePushNotifications(
 
       return subscription;
     } catch (error) {
-      console.error('Error checking push subscription:', error);
+      logger.error('Error checking push subscription:', error);
       setState((prev) => ({ ...prev, isLoading: false }));
       return null;
     }
@@ -121,7 +122,7 @@ export function usePushNotifications(
       return permissionState;
     } catch (error) {
       const errorMsg = 'Failed to request notification permission';
-      console.error(errorMsg, error);
+      logger.error(errorMsg, error);
       setState((prev) => ({ ...prev, error: errorMsg, isLoading: false }));
       onError?.(errorMsg);
       return 'denied';
@@ -137,7 +138,7 @@ export function usePushNotifications(
 
     if (!VAPID_PUBLIC_KEY) {
       const errorMsg = 'VAPID public key is not configured';
-      console.error(errorMsg);
+      logger.error(errorMsg);
       setState((prev) => ({ ...prev, error: errorMsg }));
       onError?.(errorMsg);
       return null;
@@ -183,7 +184,7 @@ export function usePushNotifications(
             user_agent: navigator.userAgent,
           });
         } catch (error) {
-          console.warn('Failed to save subscription to server:', error);
+          logger.warn('Failed to save subscription to server:', error);
         }
       }
 
@@ -198,7 +199,7 @@ export function usePushNotifications(
       return subscription;
     } catch (error) {
       const errorMsg = 'Failed to subscribe to push notifications';
-      console.error(errorMsg, error);
+      logger.error(errorMsg, error);
       setState((prev) => ({ ...prev, error: errorMsg, isLoading: false }));
       onError?.(errorMsg);
       return null;
@@ -223,7 +224,7 @@ export function usePushNotifications(
               data: { endpoint: subscription.endpoint },
             });
           } catch (error) {
-            console.warn('Failed to notify server about unsubscription:', error);
+            logger.warn('Failed to notify server about unsubscription:', error);
           }
         }
 
@@ -242,7 +243,7 @@ export function usePushNotifications(
       return true;
     } catch (error) {
       const errorMsg = 'Failed to unsubscribe from push notifications';
-      console.error(errorMsg, error);
+      logger.error(errorMsg, error);
       setState((prev) => ({ ...prev, error: errorMsg, isLoading: false }));
       onError?.(errorMsg);
       return false;

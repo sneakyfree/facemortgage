@@ -17,6 +17,7 @@ import {
   Lightbulb,
   Target,
 } from 'lucide-react';
+import { logger } from '@/lib/utils';
 
 interface TimeSeriesPoint {
   date: string;
@@ -134,7 +135,7 @@ export default function AnalyticsDashboard() {
         setData(dashboardData);
       }
     } catch (error) {
-      console.error('Failed to fetch analytics:', error);
+      logger.error('Failed to fetch analytics:', error);
     } finally {
       setLoading(false);
     }

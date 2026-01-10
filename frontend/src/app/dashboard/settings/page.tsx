@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { apiClient } from '@/lib/api/client';
+import { logger } from '@/lib/utils';
 
 type Tab = 'profile' | 'notifications' | 'security' | 'video';
 
@@ -113,7 +114,7 @@ export default function SettingsPage() {
         setNotifications(notifRes.data);
       }
     } catch (error) {
-      console.error('Failed to fetch settings:', error);
+      logger.error('Failed to fetch settings:', error);
     }
   }
 
@@ -247,21 +248,21 @@ export default function SettingsPage() {
       <div className="max-w-5xl mx-auto px-8 py-6">
         {/* Alerts */}
         {success && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
-            <Check className="w-5 h-5 text-green-600" />
+          <div role="alert" className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+            <Check className="w-5 h-5 text-green-600" aria-hidden="true" />
             <p className="text-green-800">{success}</p>
-            <button onClick={() => setSuccess(null)} className="ml-auto">
-              <X className="w-4 h-4 text-green-600" />
+            <button onClick={() => setSuccess(null)} className="ml-auto" aria-label="Dismiss success message">
+              <X className="w-4 h-4 text-green-600" aria-hidden="true" />
             </button>
           </div>
         )}
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600" />
+          <div role="alert" className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600" aria-hidden="true" />
             <p className="text-red-800">{error}</p>
-            <button onClick={() => setError(null)} className="ml-auto">
-              <X className="w-4 h-4 text-red-600" />
+            <button onClick={() => setError(null)} className="ml-auto" aria-label="Dismiss error message">
+              <X className="w-4 h-4 text-red-600" aria-hidden="true" />
             </button>
           </div>
         )}
@@ -269,10 +270,15 @@ export default function SettingsPage() {
         <div className="flex gap-8">
           {/* Tabs */}
           <div className="w-48 flex-shrink-0">
-            <nav className="space-y-1">
+            <nav role="tablist" aria-label="Settings sections" className="space-y-1">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
+                  role="tab"
+                  id={`tab-${tab.id}`}
+                  aria-selected={activeTab === tab.id}
+                  aria-controls={`panel-${tab.id}`}
+                  tabIndex={activeTab === tab.id ? 0 : -1}
                   onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition ${
                     activeTab === tab.id
@@ -280,7 +286,7 @@ export default function SettingsPage() {
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  <tab.icon className="w-5 h-5" />
+                  <tab.icon className="w-5 h-5" aria-hidden="true" />
                   {tab.label}
                 </button>
               ))}
@@ -288,7 +294,12 @@ export default function SettingsPage() {
           </div>
 
           {/* Content */}
-          <div className="flex-1 bg-white rounded-xl border p-6">
+          <div
+            role="tabpanel"
+            id={`panel-${activeTab}`}
+            aria-labelledby={`tab-${activeTab}`}
+            className="flex-1 bg-white rounded-xl border p-6"
+          >
             {activeTab === 'profile' && (
               <div className="space-y-6">
                 {/* Avatar */}
@@ -333,10 +344,11 @@ export default function SettingsPage() {
                 {/* Basic Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="profile-first-name" className="block text-sm font-medium text-gray-700 mb-1">
                       First Name
                     </label>
                     <input
+                      id="profile-first-name"
                       type="text"
                       value={profileData.first_name}
                       onChange={(e) =>
@@ -346,10 +358,11 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="profile-last-name" className="block text-sm font-medium text-gray-700 mb-1">
                       Last Name
                     </label>
                     <input
+                      id="profile-last-name"
                       type="text"
                       value={profileData.last_name}
                       onChange={(e) =>
@@ -362,10 +375,11 @@ export default function SettingsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="profile-email" className="block text-sm font-medium text-gray-700 mb-1">
                       Email
                     </label>
                     <input
+                      id="profile-email"
                       type="email"
                       value={profileData.email}
                       disabled
@@ -373,10 +387,11 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="profile-phone" className="block text-sm font-medium text-gray-700 mb-1">
                       Phone
                     </label>
                     <input
+                      id="profile-phone"
                       type="tel"
                       value={profileData.phone}
                       onChange={(e) =>
@@ -393,10 +408,11 @@ export default function SettingsPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="prof-company" className="block text-sm font-medium text-gray-700 mb-1">
                         Company Name
                       </label>
                       <input
+                        id="prof-company"
                         type="text"
                         value={profileData.company_name}
                         onChange={(e) =>
@@ -406,10 +422,11 @@ export default function SettingsPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="prof-title" className="block text-sm font-medium text-gray-700 mb-1">
                         Job Title
                       </label>
                       <input
+                        id="prof-title"
                         type="text"
                         value={profileData.job_title}
                         onChange={(e) =>
@@ -422,10 +439,11 @@ export default function SettingsPage() {
 
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="prof-nmls" className="block text-sm font-medium text-gray-700 mb-1">
                         NMLS ID
                       </label>
                       <input
+                        id="prof-nmls"
                         type="text"
                         value={profileData.nmls_id}
                         onChange={(e) =>
@@ -436,10 +454,11 @@ export default function SettingsPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="prof-experience" className="block text-sm font-medium text-gray-700 mb-1">
                         Years of Experience
                       </label>
                       <input
+                        id="prof-experience"
                         type="number"
                         value={profileData.years_experience}
                         onChange={(e) =>
@@ -455,8 +474,9 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                    <label htmlFor="prof-bio" className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
                     <textarea
+                      id="prof-bio"
                       value={profileData.bio}
                       onChange={(e) =>
                         setProfileData({ ...profileData, bio: e.target.value })
@@ -536,10 +556,11 @@ export default function SettingsPage() {
 
                 <div className="max-w-md space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="sec-current-pwd" className="block text-sm font-medium text-gray-700 mb-1">
                       Current Password
                     </label>
                     <input
+                      id="sec-current-pwd"
                       type="password"
                       value={passwords.current_password}
                       onChange={(e) =>
@@ -549,10 +570,11 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="sec-new-pwd" className="block text-sm font-medium text-gray-700 mb-1">
                       New Password
                     </label>
                     <input
+                      id="sec-new-pwd"
                       type="password"
                       value={passwords.new_password}
                       onChange={(e) =>
@@ -563,10 +585,11 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="sec-confirm-pwd" className="block text-sm font-medium text-gray-700 mb-1">
                       Confirm New Password
                     </label>
                     <input
+                      id="sec-confirm-pwd"
                       type="password"
                       value={passwords.confirm_password}
                       onChange={(e) =>

@@ -237,10 +237,11 @@ export default function ScheduleCallModal({
         {step === 'info' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="schedule-name" className="block text-sm font-medium text-gray-700 mb-1">
                 Your Name *
               </label>
               <input
+                id="schedule-name"
                 type="text"
                 required
                 value={formData.name}
@@ -251,10 +252,11 @@ export default function ScheduleCallModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="schedule-email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email *
               </label>
               <input
+                id="schedule-email"
                 type="email"
                 required
                 value={formData.email}
@@ -265,10 +267,11 @@ export default function ScheduleCallModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="schedule-phone" className="block text-sm font-medium text-gray-700 mb-1">
                 Phone
               </label>
               <input
+                id="schedule-phone"
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -278,10 +281,11 @@ export default function ScheduleCallModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="schedule-notes" className="block text-sm font-medium text-gray-700 mb-1">
                 What would you like to discuss?
               </label>
               <textarea
+                id="schedule-notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

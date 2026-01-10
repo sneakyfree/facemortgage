@@ -63,11 +63,11 @@ class LiveKitService:
     """
 
     # Token expiry time
-    TOKEN_TTL_SECONDS = 3600  # 1 hour
+    TOKEN_TTL_SECONDS = settings.livekit_token_ttl_seconds
 
     # Room configuration
     MAX_PARTICIPANTS = 2  # Borrower + Professional
-    EMPTY_ROOM_TIMEOUT = 300  # 5 minutes
+    EMPTY_ROOM_TIMEOUT = settings.livekit_empty_room_timeout_seconds
 
     def __init__(
         self,

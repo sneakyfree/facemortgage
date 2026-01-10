@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { logger } from '@/lib/utils';
 
 export default function ServiceWorkerRegistration() {
   useEffect(() => {
@@ -9,7 +10,7 @@ export default function ServiceWorkerRegistration() {
 
     // Check if service workers are supported
     if (!('serviceWorker' in navigator)) {
-      console.log('[SW] Service workers are not supported');
+      logger.log('[SW] Service workers are not supported');
       return;
     }
 
@@ -21,18 +22,18 @@ export default function ServiceWorkerRegistration() {
           updateViaCache: 'none',
         });
 
-        console.log('[SW] Service worker registered successfully:', registration.scope);
+        logger.log('[SW] Service worker registered successfully:', registration.scope);
 
         // Check for updates
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           if (newWorker) {
-            console.log('[SW] New service worker installing...');
+            logger.log('[SW] New service worker installing...');
 
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                 // New service worker available
-                console.log('[SW] New service worker available');
+                logger.log('[SW] New service worker available');
 
                 // Optionally show update prompt to user
                 if (window.confirm('A new version of FaceMortgage is available. Reload to update?')) {
@@ -47,17 +48,17 @@ export default function ServiceWorkerRegistration() {
 
         // Handle controller change (new SW took over)
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-          console.log('[SW] Controller changed, reloading...');
+          logger.log('[SW] Controller changed, reloading...');
         });
 
         // Periodic update check (every hour)
         setInterval(() => {
           registration.update().catch((error) => {
-            console.warn('[SW] Update check failed:', error);
+            logger.warn('[SW] Update check failed:', error);
           });
         }, 60 * 60 * 1000);
       } catch (error) {
-        console.error('[SW] Service worker registration failed:', error);
+        logger.error('[SW] Service worker registration failed:', error);
       }
     };
 

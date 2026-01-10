@@ -24,6 +24,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useProfessionalPresence } from '@/hooks/useProfessionalPresence';
 import { apiClient } from '@/lib/api/client';
 import type { AnalyticsOverview, ProfessionalStatus } from '@/types';
+import { logger } from '@/lib/utils';
 
 interface QuickStats {
   calls_today: number;
@@ -96,7 +97,7 @@ export default function DashboardHome() {
         setRecentActivity([]);
       }
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+      logger.error('Failed to fetch dashboard data:', error);
     } finally {
       setLoading(false);
     }

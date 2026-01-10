@@ -23,11 +23,12 @@ from src.app.models.professional import (
 )
 from src.app.models.user import User
 from src.app.grid.ranking import get_ranking_service, RankedProfessional
+from src.app.config import settings
 
 
 # Cache configuration
-GRID_CACHE_TTL = timedelta(seconds=30)  # Short TTL for real-time updates
-FILTER_CACHE_TTL = timedelta(minutes=5)
+GRID_CACHE_TTL = timedelta(seconds=settings.grid_cache_ttl_seconds)
+FILTER_CACHE_TTL = timedelta(seconds=settings.filter_cache_ttl_seconds)
 
 grid_cache = CacheService("grid")
 

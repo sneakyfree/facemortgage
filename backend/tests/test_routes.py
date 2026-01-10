@@ -768,16 +768,17 @@ class TestUsersRoutes:
         self,
         authenticated_borrower_client: AsyncClient,
     ):
-        """Test changing password to short one fails."""
+        """Test changing password to weak one fails."""
         response = await authenticated_borrower_client.post(
             "/api/v1/users/me/password",
             json={
                 "current_password": "testpass123",  # Matches fixture password hash
-                "new_password": "short",  # Too short
+                "new_password": "short",  # Doesn't meet password policy
             },
         )
         assert response.status_code == 400
-        assert "8 characters" in response.json()["error"]["message"]
+        # Updated to match new password policy (12 chars minimum)
+        assert "12 characters" in response.json()["error"]["message"]
 
     @pytest.mark.asyncio
     async def test_get_notification_settings(

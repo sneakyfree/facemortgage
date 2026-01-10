@@ -82,8 +82,8 @@ class SignalingService:
     - Pub/Sub for signaling messages between participants
     """
 
-    ROOM_TTL = 3600  # 1 hour room expiry
-    RING_TIMEOUT = 30  # 30 seconds to answer
+    ROOM_TTL = settings.room_ttl_seconds
+    RING_TIMEOUT = settings.ring_timeout_seconds
 
     def __init__(self, redis_url: str = None):
         self.redis_url = redis_url or settings.redis_url

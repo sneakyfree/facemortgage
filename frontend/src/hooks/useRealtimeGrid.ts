@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useGridStore } from '@/stores/gridStore';
 import type { ProfessionalStatus } from '@/types';
 import { WS_BASE_URL, config } from '@/lib/config';
+import { logger } from '@/lib/utils';
 
 interface GridUpdateEvent {
   event: string;
@@ -78,7 +79,7 @@ export function useRealtimeGrid(options: UseRealtimeGridOptions = {}) {
             break;
 
           case 'connected':
-            console.log('Connected to grid updates WebSocket');
+            logger.log('Connected to grid updates WebSocket');
             reconnectAttempts.current = 0;
             break;
 
@@ -87,10 +88,10 @@ export function useRealtimeGrid(options: UseRealtimeGridOptions = {}) {
             break;
 
           default:
-            console.log('Unknown grid event:', data.event);
+            logger.log('Unknown grid event:', data.event);
         }
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        logger.error('Error parsing WebSocket message:', error);
       }
     },
     [
@@ -113,32 +114,32 @@ export function useRealtimeGrid(options: UseRealtimeGridOptions = {}) {
       wsRef.current = new WebSocket(`${WS_BASE_URL}/ws/grid`);
 
       wsRef.current.onopen = () => {
-        console.log('Grid WebSocket connected');
+        logger.log('Grid WebSocket connected');
         reconnectAttempts.current = 0;
       };
 
       wsRef.current.onmessage = handleMessage;
 
       wsRef.current.onclose = (event) => {
-        console.log('Grid WebSocket closed:', event.code, event.reason);
+        logger.log('Grid WebSocket closed:', event.code, event.reason);
 
         // Attempt reconnection with exponential backoff
         if (reconnectAttempts.current < config.ws.reconnectAttempts) {
           const delay = Math.min(config.ws.reconnectDelay * Math.pow(2, reconnectAttempts.current), 30000);
           reconnectAttempts.current++;
 
-          console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current})`);
+          logger.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current})`);
           reconnectTimeoutRef.current = setTimeout(connect, delay);
         } else {
-          console.error('Max reconnection attempts reached');
+          logger.error('Max reconnection attempts reached');
         }
       };
 
       wsRef.current.onerror = (error) => {
-        console.error('Grid WebSocket error:', error);
+        logger.error('Grid WebSocket error:', error);
       };
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
+      logger.error('Failed to create WebSocket connection:', error);
     }
   }, [handleMessage]);
 

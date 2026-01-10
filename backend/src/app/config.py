@@ -74,10 +74,22 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", mode="before")
     @classmethod
     def validate_cors_origins(cls, v):
-        """Parse CORS origins from comma-separated string if needed."""
+        """Parse CORS origins from comma-separated string if needed and validate for production."""
+        origins = v
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+            origins = [origin.strip() for origin in v.split(",") if origin.strip()]
+
+        # Check if running in production - reject localhost/127.0.0.1
+        env = os.getenv("ENVIRONMENT", "development")
+        if env == "production":
+            for origin in origins:
+                if "localhost" in origin or "127.0.0.1" in origin:
+                    raise ValueError(
+                        f"Localhost origins not allowed in production: {origin}. "
+                        "Set CORS_ORIGINS to your production domain(s)."
+                    )
+
+        return origins
 
     # Stripe
     stripe_secret_key: Optional[str] = None
@@ -133,6 +145,29 @@ class Settings(BaseSettings):
     video_storage_path: str = "./uploads/videos"
     video_max_size_mb: int = 100
     video_max_duration_seconds: int = 60
+
+    # File Upload Limits
+    max_avatar_size_mb: int = 5  # Maximum avatar file size in MB
+
+    # Presence/Signaling Timeouts
+    heartbeat_timeout_seconds: int = 30  # Seconds before considering presence stale
+    heartbeat_interval_seconds: int = 10  # Seconds between heartbeats
+    ring_timeout_seconds: int = 30  # Seconds to answer a call
+    room_ttl_seconds: int = 3600  # 1 hour room expiry
+
+    # LiveKit Settings
+    livekit_token_ttl_seconds: int = 3600  # 1 hour token validity
+    livekit_empty_room_timeout_seconds: int = 300  # 5 minutes before cleaning empty rooms
+
+    # Cache TTLs
+    grid_cache_ttl_seconds: int = 30  # Short TTL for real-time grid updates
+    filter_cache_ttl_seconds: int = 300  # 5 minutes for filter options
+
+    # Billing
+    trial_period_days: int = 14  # Free trial period for new subscriptions
+
+    # External API Settings
+    external_api_timeout_seconds: float = 5.0  # Timeout for external API calls (lookups)
 
     # Cloud Storage (S3/R2)
     storage_backend: str = "local"  # local, s3, r2

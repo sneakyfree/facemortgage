@@ -8,6 +8,7 @@ Handles:
 - Billing portal access
 - Stripe webhooks
 """
+import logging
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List
@@ -18,6 +19,8 @@ from sqlalchemy import select
 
 import stripe
 from redis.exceptions import RedisError
+
+logger = logging.getLogger(__name__)
 
 from src.app.config import settings
 from src.app.core.dependencies import DbSession, CurrentProfessional
@@ -179,7 +182,7 @@ async def create_subscription(
     sub_result = await stripe_service.create_subscription(
         customer_id=customer_id,
         tier=body.tier,
-        trial_days=14 if not existing else 0,  # Trial only for first subscription
+        trial_days=settings.trial_period_days if not existing else 0,  # Trial only for first subscription
     )
 
     # Create or update subscription record
@@ -459,7 +462,9 @@ async def stripe_webhook(
     try:
         event = stripe_service.construct_webhook_event(payload, stripe_signature)
     except (stripe.error.SignatureVerificationError, ValueError) as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # Log detailed error internally, return generic message to client
+        logger.error(f"Webhook signature verification failed: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid webhook signature")
 
     event_type = event["type"]
     data = event["data"]["object"]

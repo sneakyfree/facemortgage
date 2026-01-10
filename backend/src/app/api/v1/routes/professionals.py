@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
@@ -549,6 +550,11 @@ async def get_baseball_card(
         response["error"] = "NMLS ID not configured"
         return response
 
+    # Validate NMLS ID format before external API calls (6-12 digits)
+    if not re.match(r'^\d{6,12}$', str(professional.nmls_id)):
+        response["error"] = "Invalid NMLS ID format"
+        return response
+
     # Fetch external data from data provider
     try:
         provider = DataProviderFactory.get_provider()
@@ -592,7 +598,9 @@ async def get_baseball_card(
             }
 
     except Exception as e:
-        response["error"] = f"Unable to fetch external data: {str(e)}"
+        # Log detailed error internally, return generic message to client
+        logger.error(f"Failed to fetch external data for NMLS {professional.nmls_id}: {str(e)}")
+        response["error"] = "Unable to fetch external data"
 
     return response
 

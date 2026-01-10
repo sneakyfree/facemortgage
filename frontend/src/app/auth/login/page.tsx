@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api/client';
 import { authApi } from '@/lib/api/endpoints';
 import { useAuthStore } from '@/stores/authStore';
+import { logger } from '@/lib/utils';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function LoginPage() {
         router.push('/dashboard');
       }
     } catch (err: unknown) {
-      console.error('Login error:', err);
+      logger.error('Login error:', err);
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosError = err as { response?: { data?: { detail?: string } } };
         setError(axiosError.response?.data?.detail || 'Invalid email or password');
@@ -73,7 +74,7 @@ export default function LoginPage() {
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="rounded-md bg-red-50 p-4">
+            <div role="alert" className="rounded-md bg-red-50 p-4">
               <div className="flex">
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-red-800">{error}</h3>

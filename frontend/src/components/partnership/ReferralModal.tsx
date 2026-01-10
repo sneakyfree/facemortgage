@@ -109,10 +109,11 @@ export default function ReferralModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="referral-name" className="block text-sm font-medium text-gray-700 mb-1">
                 Client Name *
               </label>
               <input
+                id="referral-name"
                 type="text"
                 required
                 value={formData.borrower_name}
@@ -123,10 +124,11 @@ export default function ReferralModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="referral-email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email *
               </label>
               <input
+                id="referral-email"
                 type="email"
                 required
                 value={formData.borrower_email}
@@ -137,10 +139,11 @@ export default function ReferralModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="referral-phone" className="block text-sm font-medium text-gray-700 mb-1">
                 Phone
               </label>
               <input
+                id="referral-phone"
                 type="tel"
                 value={formData.borrower_phone || ''}
                 onChange={(e) => setFormData({ ...formData, borrower_phone: e.target.value })}
@@ -151,10 +154,11 @@ export default function ReferralModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="referral-address" className="block text-sm font-medium text-gray-700 mb-1">
               Property Address
             </label>
             <input
+              id="referral-address"
               type="text"
               value={formData.property_address || ''}
               onChange={(e) => setFormData({ ...formData, property_address: e.target.value })}
@@ -165,10 +169,11 @@ export default function ReferralModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="referral-purpose" className="block text-sm font-medium text-gray-700 mb-1">
                 Loan Purpose
               </label>
               <select
+                id="referral-purpose"
                 value={formData.loan_purpose || ''}
                 onChange={(e) => setFormData({ ...formData, loan_purpose: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -182,10 +187,11 @@ export default function ReferralModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="referral-amount" className="block text-sm font-medium text-gray-700 mb-1">
                 Est. Loan Amount
               </label>
               <select
+                id="referral-amount"
                 value={formData.estimated_amount?.toString() || ''}
                 onChange={(e) => setFormData({
                   ...formData,
@@ -204,10 +210,11 @@ export default function ReferralModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="referral-notes" className="block text-sm font-medium text-gray-700 mb-1">
               Notes for {partnership.loan_officer_name?.split(' ')[0]}
             </label>
             <textarea
+              id="referral-notes"
               value={formData.notes || ''}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

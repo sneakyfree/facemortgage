@@ -29,8 +29,8 @@ class PresenceService:
     - Pub/Sub 'grid_updates': broadcasts grid-relevant changes
     """
 
-    HEARTBEAT_TIMEOUT = 30  # seconds before considering stale
-    HEARTBEAT_INTERVAL = 10  # seconds between heartbeats
+    HEARTBEAT_TIMEOUT = settings.heartbeat_timeout_seconds
+    HEARTBEAT_INTERVAL = settings.heartbeat_interval_seconds
     ONLINE_SET_KEY = "online_professionals"
     AVAILABLE_SET_KEY = "available_professionals"
 

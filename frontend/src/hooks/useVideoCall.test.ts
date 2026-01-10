@@ -3,7 +3,19 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
+
+// Mock auth store - must be before importing hook
+const mockAuthStore = {
+  isAuthenticated: true,
+  user: { id: 'user-123', email: 'test@example.com' },
+};
+
+vi.mock('@/stores/authStore', () => ({
+  useAuthStore: vi.fn(() => mockAuthStore),
+}));
+
 import { useVideoCall } from './useVideoCall';
+import { useAuthStore } from '@/stores/authStore';
 
 // Mock localStorage
 const mockLocalStorage = {
@@ -151,6 +163,12 @@ vi.mock('@/lib/api/client', () => ({
 vi.mock('@/lib/utils', () => ({
   getAnonymousSessionId: vi.fn(() => 'anon-session-123'),
   getDeviceFingerprint: vi.fn(() => 'device-fingerprint-456'),
+  logger: {
+    log: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
 }));
 
 import { apiClient } from '@/lib/api/client';
@@ -160,6 +178,10 @@ describe('useVideoCall', () => {
     vi.clearAllMocks();
     mockLocalStorage.clear();
     mockGetUserMedia.mockClear();
+
+    // Reset auth store to authenticated by default
+    mockAuthStore.isAuthenticated = true;
+    mockAuthStore.user = { id: 'user-123', email: 'test@example.com' };
   });
 
   afterEach(() => {
@@ -224,8 +246,9 @@ describe('useVideoCall', () => {
     });
 
     it('initiates an anonymous call', async () => {
-      // No access token = anonymous call
-      mockLocalStorage.store = {};
+      // Set auth store to unauthenticated for anonymous call
+      mockAuthStore.isAuthenticated = false;
+      mockAuthStore.user = null as unknown as typeof mockAuthStore.user;
 
       vi.mocked(apiClient.post).mockResolvedValue({
         data: {

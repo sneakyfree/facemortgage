@@ -124,7 +124,7 @@ async def readiness_check() -> JSONResponse:
                 "max_connections": getattr(pool, "max_connections", None),
                 "current_connections": len(getattr(pool, "_available_connections", [])) + len(getattr(pool, "_in_use_connections", [])),
             }
-        except Exception:
+        except (AttributeError, TypeError):
             pass
 
         checks["redis"] = {

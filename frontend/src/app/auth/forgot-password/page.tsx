@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api/client';
+import { logger } from '@/lib/utils';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -19,7 +20,7 @@ export default function ForgotPasswordPage() {
       await apiClient.post('/auth/forgot-password', { email });
       setSubmitted(true);
     } catch (err: unknown) {
-      console.error('Forgot password error:', err);
+      logger.error('Forgot password error:', err);
       // Don't reveal if email exists or not for security
       setSubmitted(true);
     } finally {

@@ -96,6 +96,13 @@ class RateCallResponse(BaseModel):
     review_id: UUID
 
 
+class EndCallResponse(BaseModel):
+    """Response schema for ending a call."""
+    message: str
+    duration_seconds: Optional[int] = None
+    pickup_time_seconds: Optional[float] = None
+
+
 # ==================== Routes ====================
 
 @router.post("", response_model=InitiateCallResponse)
@@ -339,7 +346,7 @@ async def get_call_state(
     )
 
 
-@router.post("/{room_id}/end")
+@router.post("/{room_id}/end", response_model=EndCallResponse)
 @limiter.limit(RATE_LIMITS["api_write"])
 async def end_call(
     request: Request,
@@ -347,7 +354,13 @@ async def end_call(
     current_user: CurrentUser,
     db: DbSession,
 ):
-    """End an active call."""
+    """
+    End an active call.
+
+    Either participant (borrower or professional) can end the call.
+    Updates the call record with final duration and pickup time metrics.
+    Sets the professional's status back to available.
+    """
     signaling = get_signaling_service()
     presence = get_presence_service()
 
@@ -397,11 +410,11 @@ async def end_call(
     # Set professional back to available
     await presence.set_available(room.professional_id)
 
-    return {
-        "message": "Call ended",
-        "duration_seconds": video_call.duration_seconds if video_call else None,
-        "pickup_time_seconds": pickup_time,
-    }
+    return EndCallResponse(
+        message="Call ended",
+        duration_seconds=video_call.duration_seconds if video_call else None,
+        pickup_time_seconds=pickup_time,
+    )
 
 
 @router.post("/{room_id}/rate", response_model=RateCallResponse)

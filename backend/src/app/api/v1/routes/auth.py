@@ -1,9 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 from fastapi import APIRouter, HTTPException, status, Request, Response
+from pydantic import BaseModel
 from sqlalchemy import select
 
 from src.app.config import settings
+
+# Account lockout settings
+LOCKOUT_THRESHOLD = 5  # Number of failed attempts before lockout
+LOCKOUT_DURATION = timedelta(minutes=15)  # Duration of account lockout
 from src.app.core.dependencies import DbSession, CurrentUser
 from src.app.core.security import (
     verify_password,
@@ -86,6 +91,21 @@ def validate_password_strength(password: str) -> tuple[bool, str]:
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit(RATE_LIMITS["auth_register"])
 async def register(request: Request, user_in: UserCreate, db: DbSession):
+    """
+    Register a new user account.
+
+    Creates a user with the specified type (loan_officer, realtor, title_rep,
+    attorney, or borrower) and automatically creates the corresponding profile.
+
+    Password requirements:
+    - Minimum 12 characters
+    - At least one uppercase letter
+    - At least one lowercase letter
+    - At least one number
+    - At least one special character
+
+    Returns the created user (without password).
+    """
     # Validate password strength
     is_valid, error_msg = validate_password_strength(user_in.password)
     if not is_valid:
@@ -131,11 +151,36 @@ async def register(request: Request, user_in: UserCreate, db: DbSession):
 @router.post("/login", response_model=TokenPair)
 @limiter.limit(RATE_LIMITS["auth_login"])
 async def login(request: Request, response: Response, login_data: LoginRequest, db: DbSession):
+    """
+    Authenticate a user and return access tokens.
+
+    Sets httpOnly cookies containing access_token and refresh_token for
+    secure browser-based authentication. Also returns tokens in response
+    body for API clients.
+
+    Account lockout: After 5 failed attempts, account is locked for 15 minutes.
+
+    Returns access_token (30 min) and refresh_token (7 days).
+    """
     # Database lookup only - no mock users in any environment
     result = await db.execute(select(User).where(User.email == login_data.email))
     user = result.scalar_one_or_none()
 
+    # Check if account is locked
+    if user and user.locked_until and user.locked_until > datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Account temporarily locked due to too many failed login attempts. Please try again later.",
+        )
+
+    # Verify credentials
     if not user or not verify_password(login_data.password, user.password_hash):
+        # Track failed login attempt if user exists
+        if user:
+            user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+            if user.failed_login_attempts >= LOCKOUT_THRESHOLD:
+                user.locked_until = datetime.utcnow() + LOCKOUT_DURATION
+            await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -147,7 +192,9 @@ async def login(request: Request, response: Response, login_data: LoginRequest, 
             detail="User account is disabled",
         )
 
-    # Update last login
+    # Reset failed attempts and lockout on successful login
+    user.failed_login_attempts = 0
+    user.locked_until = None
     user.last_login_at = datetime.utcnow()
     await db.commit()
 
@@ -211,13 +258,30 @@ async def refresh_token_endpoint(
     )
 
 
-@router.get("/me")
+@router.get("/me", response_model=UserResponse)
 async def get_current_user_info(current_user: CurrentUser):
+    """
+    Get the current authenticated user's information.
+
+    Returns the full user profile including account status and timestamps.
+    Requires valid authentication via access_token cookie or Authorization header.
+    """
     return current_user
 
 
-@router.post("/logout")
+class LogoutResponse(BaseModel):
+    """Response schema for logout endpoint."""
+    message: str
+
+
+@router.post("/logout", response_model=LogoutResponse)
 async def logout(response: Response):
+    """
+    Log out the current user.
+
+    Clears authentication cookies (access_token and refresh_token).
+    After logout, the user must log in again to access protected resources.
+    """
     # Clear auth cookies
     clear_auth_cookies(response)
-    return {"message": "Successfully logged out"}
+    return LogoutResponse(message="Successfully logged out")

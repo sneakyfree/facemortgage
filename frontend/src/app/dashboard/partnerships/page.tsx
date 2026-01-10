@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Users, UserPlus, TrendingUp, DollarSign, Mail, MoreVertical, Trash2 } from 'lucide-react';
 import { partnershipsApi, PartnershipDetail } from '@/lib/api/endpoints';
 import { InvitePartnerModal } from '@/components/partnership';
+import { logger } from '@/lib/utils';
 
 interface PartnershipStats {
   activePartners: number;
@@ -143,7 +144,7 @@ export default function PartnershipsPage() {
         pipelineValue: 0,
       });
     } catch (error) {
-      console.error('Failed to load partnerships:', error);
+      logger.error('Failed to load partnerships:', error);
     } finally {
       setIsLoading(false);
     }
@@ -158,7 +159,7 @@ export default function PartnershipsPage() {
       await partnershipsApi.terminatePartnership(partnershipId);
       loadData();
     } catch (error) {
-      console.error('Failed to terminate partnership:', error);
+      logger.error('Failed to terminate partnership:', error);
     }
   };
 

@@ -65,7 +65,7 @@ export default function RootLayout({
         <Providers>
           <ServiceWorkerRegistration />
           <Header />
-          <main>{children}</main>
+          <main id="main-content">{children}</main>
         </Providers>
       </body>
     </html>

@@ -54,6 +54,7 @@ type ViewState = 'loading' | 'profile' | 'calling' | 'connected' | 'ended' | 'sc
 
 // API Configuration - use centralized config
 import { API_URL } from '@/lib/config';
+import { logger } from '@/lib/utils';
 
 function WidgetPageContent() {
   const searchParams = useSearchParams();
@@ -132,7 +133,7 @@ function WidgetPageContent() {
         setProfessional(data);
         setViewState('profile');
       } catch (err) {
-        console.error('Error fetching professional:', err);
+        logger.error('Error fetching professional:', err);
         setError('Unable to load professional');
         setViewState('error');
       }
@@ -183,7 +184,7 @@ function WidgetPageContent() {
       // Set up WebRTC connection
       await setupWebRTC(callData);
     } catch (err) {
-      console.error('Error initiating call:', err);
+      logger.error('Error initiating call:', err);
       setError('Failed to start call. Please check your camera and microphone permissions.');
       setViewState('error');
       cleanupCall();
@@ -260,7 +261,7 @@ function WidgetPageContent() {
         }
       };
     } catch (err) {
-      console.error('WebRTC setup error:', err);
+      logger.error('WebRTC setup error:', err);
       throw err;
     }
   };
@@ -274,7 +275,7 @@ function WidgetPageContent() {
         ws.close();
       };
     } catch (err) {
-      console.error('Signaling error:', err);
+      logger.error('Signaling error:', err);
     }
   };
 
@@ -362,7 +363,7 @@ function WidgetPageContent() {
         }
       }, 2000);
     } catch (err) {
-      console.error('Error submitting rating:', err);
+      logger.error('Error submitting rating:', err);
     }
   };
 
@@ -395,7 +396,7 @@ function WidgetPageContent() {
 
       setScheduleSubmitted(true);
     } catch (err) {
-      console.error('Error scheduling call:', err);
+      logger.error('Error scheduling call:', err);
       setScheduleError('Failed to schedule call. Please try again.');
     }
   };

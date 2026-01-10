@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, Award, TrendingUp, MapPin, Building2, Shield, BarChart3 } from 'lucide-react';
+import { useFocusTrap, useEscapeKey } from '@/hooks/useFocusTrap';
 
 interface LoanMix {
   type: string;
@@ -70,6 +71,11 @@ export function BaseballCard({ nmlsId, professionalName, professionalImage, onCl
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Accessibility: Focus trap and escape key handling
+  const modalRef = useFocusTrap<HTMLDivElement>(true);
+  const handleEscape = useCallback(() => onClose(), [onClose]);
+  useEscapeKey(true, handleEscape);
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -125,14 +131,21 @@ export function BaseballCard({ nmlsId, professionalName, professionalImage, onCl
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="baseball-card-title"
+        className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden"
+      >
         {/* Header */}
         <div className="relative bg-gradient-to-r from-blue-600 to-blue-700 p-6">
           <button
             onClick={onClose}
+            aria-label="Close professional details"
             className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
           >
-            <X className="h-6 w-6" />
+            <X className="h-6 w-6" aria-hidden="true" />
           </button>
 
           <div className="flex items-center gap-4">
@@ -143,14 +156,14 @@ export function BaseballCard({ nmlsId, professionalName, professionalImage, onCl
                 className="w-20 h-20 rounded-full border-4 border-white/20 object-cover"
               />
             ) : (
-              <div className="w-20 h-20 rounded-full border-4 border-white/20 bg-blue-500 flex items-center justify-center">
+              <div className="w-20 h-20 rounded-full border-4 border-white/20 bg-blue-500 flex items-center justify-center" aria-hidden="true">
                 <span className="text-2xl font-bold text-white">
                   {data.name.charAt(0)}
                 </span>
               </div>
             )}
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-white">{professionalName || data.name}</h2>
+              <h2 id="baseball-card-title" className="text-2xl font-bold text-white">{professionalName || data.name}</h2>
               {data.company && (
                 <p className="text-blue-100 flex items-center gap-2 mt-1">
                   <Building2 className="h-4 w-4" />

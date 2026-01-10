@@ -1,4 +1,5 @@
 import logging
+import uuid
 from typing import Annotated, Optional
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -16,6 +17,14 @@ logger = logging.getLogger(__name__)
 
 # Don't auto-error on missing Bearer header - we'll also check cookies
 security = HTTPBearer(auto_error=False)
+
+
+def _parse_user_id(user_id_str: str) -> uuid.UUID | None:
+    """Safely parse a user ID string to UUID."""
+    try:
+        return uuid.UUID(user_id_str)
+    except (ValueError, TypeError):
+        return None
 
 
 def get_token_from_request(
@@ -47,6 +56,19 @@ async def get_current_user(
     credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(security)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
+    """
+    Get the currently authenticated user.
+
+    Extracts the access token from either the Authorization header (Bearer token)
+    or the httpOnly access_token cookie. Validates the token and returns the user.
+
+    Raises:
+        HTTPException 401: If no valid token is provided or token is invalid/expired
+        HTTPException 403: If the user account is disabled
+
+    Returns:
+        User: The authenticated user object
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -65,7 +87,11 @@ async def get_current_user(
     if payload.type != "access":
         raise credentials_exception
 
-    result = await db.execute(select(User).where(User.id == payload.sub))
+    user_id = _parse_user_id(payload.sub)
+    if user_id is None:
+        raise credentials_exception
+
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
     if user is None:
@@ -85,6 +111,16 @@ async def get_current_user_optional(
     credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(security)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Optional[User]:
+    """
+    Get the currently authenticated user, or None if not authenticated.
+
+    Unlike get_current_user, this does not raise an exception if no valid
+    token is provided. Useful for endpoints that work for both authenticated
+    and anonymous users (e.g., initiating calls).
+
+    Returns:
+        Optional[User]: The authenticated user, or None if not authenticated
+    """
     token = get_token_from_request(request, credentials)
     if not token:
         return None
@@ -94,7 +130,11 @@ async def get_current_user_optional(
         if payload is None or payload.type != "access":
             return None
 
-        result = await db.execute(select(User).where(User.id == payload.sub))
+        user_id = _parse_user_id(payload.sub)
+        if user_id is None:
+            return None
+
+        result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
 
         if user is None or not user.is_active:
@@ -133,11 +173,15 @@ async def require_professional(
     if payload.type != "access":
         raise credentials_exception
 
+    user_id = _parse_user_id(payload.sub)
+    if user_id is None:
+        raise credentials_exception
+
     # Eager-load professional_profile
     result = await db.execute(
         select(User)
         .options(selectinload(User.professional_profile))
-        .where(User.id == payload.sub)
+        .where(User.id == user_id)
     )
     user = result.scalar_one_or_none()
 
@@ -197,12 +241,16 @@ async def require_borrower(
     if payload.type != "access":
         raise credentials_exception
 
+    user_id = _parse_user_id(payload.sub)
+    if user_id is None:
+        raise credentials_exception
+
     # Eager-load borrower_profile
     from src.app.models.borrower import BorrowerProfile
     result = await db.execute(
         select(User)
         .options(selectinload(User.borrower_profile))
-        .where(User.id == payload.sub)
+        .where(User.id == user_id)
     )
     user = result.scalar_one_or_none()
 
@@ -253,7 +301,11 @@ async def get_current_user_ws(
         if payload is None or payload.type != "access":
             return None
 
-        query = select(User).where(User.id == payload.sub)
+        user_id = _parse_user_id(payload.sub)
+        if user_id is None:
+            return None
+
+        query = select(User).where(User.id == user_id)
 
         if load_professional_profile:
             query = query.options(selectinload(User.professional_profile))
@@ -283,9 +335,22 @@ async def require_admin(
 
 
 # Type aliases for dependency injection
+# These provide convenient type hints for FastAPI route dependencies
+
 CurrentUser = Annotated[User, Depends(get_current_user)]
+"""Requires authenticated user. Returns User or raises 401."""
+
 CurrentUserOptional = Annotated[Optional[User], Depends(get_current_user_optional)]
+"""Optional auth - returns User if authenticated, None otherwise."""
+
 CurrentProfessional = Annotated[User, Depends(require_professional)]
+"""Requires user with professional account type (loan_officer, realtor, etc.)."""
+
 CurrentBorrower = Annotated[User, Depends(require_borrower)]
+"""Requires user with borrower account type."""
+
 CurrentAdmin = Annotated[User, Depends(require_admin)]
+"""Requires user with admin privileges."""
+
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+"""Async database session for route handlers."""

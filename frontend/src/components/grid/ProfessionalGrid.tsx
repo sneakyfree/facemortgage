@@ -9,6 +9,7 @@ import { professionalsApi, gridTrackingApi } from '@/lib/api/endpoints';
 import ProfessionalCard from './ProfessionalCard';
 import { VideoCallModal } from '@/components/call';
 import type { ProfessionalGridItem } from '@/types';
+import { logger } from '@/lib/utils';
 
 // Generate a session ID for tracking
 const getSessionId = (): string => {
@@ -42,7 +43,7 @@ export default function ProfessionalGrid() {
     },
     onProfessionalOffline: (professionalId) => {
       // Already handled by the hook updating the store
-      console.log('Professional went offline:', professionalId);
+      logger.log('Professional went offline:', professionalId);
     },
   });
 

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiClient } from '@/lib/api/client';
-import { getAnonymousSessionId, getDeviceFingerprint } from '@/lib/utils';
+import { getAnonymousSessionId, getDeviceFingerprint, logger } from '@/lib/utils';
 import { WS_BASE_URL } from '@/lib/config';
+import { useAuthStore } from '@/stores/authStore';
 
 export type CallState =
   | 'idle'
@@ -56,6 +57,7 @@ interface UseVideoCallReturn {
 
 export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallReturn {
   const { onCallEnded, onError } = options;
+  const { isAuthenticated, user } = useAuthStore();
 
   // State
   const [callState, setCallState] = useState<CallState>('idle');
@@ -109,7 +111,7 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
       setLocalStream(stream);
       return stream;
     } catch (error) {
-      console.error('Failed to get user media:', error);
+      logger.error('Failed to get user media:', error);
       onError?.('Could not access camera or microphone');
       throw error;
     }
@@ -146,7 +148,7 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
 
       // Handle connection state changes
       pc.onconnectionstatechange = () => {
-        console.log('Connection state:', pc.connectionState);
+        logger.log('Connection state:', pc.connectionState);
         if (pc.connectionState === 'connected') {
           setCallState('active');
         } else if (pc.connectionState === 'failed') {
@@ -170,18 +172,18 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
         const ws = new WebSocket(`${WS_BASE_URL}/ws/signaling/${roomId}/${userId}`);
 
         ws.onopen = () => {
-          console.log('Signaling connected');
+          logger.log('Signaling connected');
           resolve();
         };
 
         ws.onerror = (error) => {
-          console.error('Signaling error:', error);
+          logger.error('Signaling error:', error);
           reject(error);
         };
 
         ws.onmessage = async (event) => {
           const data = JSON.parse(event.data);
-          console.log('Signaling message:', data.type);
+          logger.log('Signaling message:', data.type);
 
           switch (data.type) {
             case 'room_joined':
@@ -267,7 +269,7 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
         };
 
         ws.onclose = () => {
-          console.log('Signaling disconnected');
+          logger.log('Signaling disconnected');
         };
 
         wsRef.current = ws;
@@ -282,9 +284,8 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
       try {
         setCallState('initiating');
 
-        // Check if user is authenticated
-        const accessToken = localStorage.getItem('access_token');
-        const isAnonymousCall = !accessToken;
+        // Check if user is authenticated (uses auth store instead of localStorage)
+        const isAnonymousCall = !isAuthenticated;
         setIsAnonymous(isAnonymousCall);
 
         // Build the request payload
@@ -322,8 +323,8 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
           // Anonymous caller - use session-based ID
           userId = `anon:${session_id}`;
         } else {
-          // Authenticated user
-          userId = localStorage.getItem('user_id') || 'borrower';
+          // Authenticated user - use user ID from auth store
+          userId = user?.id || 'borrower';
         }
 
         setCallInfo({
@@ -344,14 +345,14 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
         // Connect to signaling
         await connectSignaling(room_id, userId);
       } catch (error: unknown) {
-        console.error('Failed to initiate call:', error);
+        logger.error('Failed to initiate call:', error);
         setCallState('failed');
         const errorMessage = error instanceof Error ? error.message : 'Failed to initiate call';
         onError?.(errorMessage);
         cleanup();
       }
     },
-    [getUserMedia, createPeerConnection, connectSignaling, cleanup, onError]
+    [getUserMedia, createPeerConnection, connectSignaling, cleanup, onError, isAuthenticated, user]
   );
 
   // Answer an incoming call (professional side)
@@ -381,7 +382,7 @@ export function useVideoCall(options: UseVideoCallOptions = {}): UseVideoCallRet
 
       setIncomingCall(null);
     } catch (error) {
-      console.error('Failed to answer call:', error);
+      logger.error('Failed to answer call:', error);
       setCallState('failed');
       onError?.('Failed to answer call');
       cleanup();
