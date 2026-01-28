@@ -55,12 +55,22 @@ class User(Base):
     push_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     last_platform: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
+    # OAuth provider IDs
+    google_id: Mapped[str | None] = mapped_column(String(100), nullable=True, unique=True, index=True)
+
+    # Password reset
+    password_reset_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    password_reset_expires: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     # Relationships
     professional_profile: Mapped["ProfessionalProfile"] = relationship(
         "ProfessionalProfile", back_populates="user", uselist=False
     )
     borrower_profile: Mapped["BorrowerProfile"] = relationship(
         "BorrowerProfile", back_populates="user", uselist=False
+    )
+    disputes: Mapped[list["Dispute"]] = relationship(
+        "Dispute", foreign_keys="[Dispute.user_id]", back_populates="user"
     )
 
     @property
@@ -80,3 +90,4 @@ class User(Base):
 # Import for type hints
 from src.app.models.professional import ProfessionalProfile
 from src.app.models.borrower import BorrowerProfile
+from src.app.models.dispute import Dispute

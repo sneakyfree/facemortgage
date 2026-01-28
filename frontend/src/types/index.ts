@@ -105,6 +105,8 @@ export interface ProfessionalGridItem {
   prerecorded_video_url?: string;
   video_type: 'live' | 'recorded';
   video_stream_url?: string;
+  thumbnail_url?: string;
+  video_url?: string;
 
   avg_rating: number;
   total_reviews: number;

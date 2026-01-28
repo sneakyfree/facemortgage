@@ -258,3 +258,147 @@ class TestAdminEndpoints:
         """Admin endpoints should require authentication."""
         response = await client.get("/api/v1/admin/users")
         assert response.status_code == 401
+
+
+class TestModerationEndpoints:
+    """Tests for content moderation endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_moderation_requires_auth(self, client: AsyncClient):
+        """Moderation endpoints should require authentication."""
+        response = await client.get("/api/v1/moderation/pending")
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_moderation_stats_requires_auth(self, client: AsyncClient):
+        """Moderation stats should require authentication."""
+        response = await client.get("/api/v1/moderation/stats")
+        assert response.status_code == 401
+
+
+class TestDisputeEndpoints:
+    """Tests for dispute resolution endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_create_dispute_requires_auth(self, client: AsyncClient):
+        """Creating disputes should require authentication."""
+        response = await client.post(
+            "/api/v1/disputes",
+            json={"review_id": "00000000-0000-0000-0000-000000000000", "reason": "test"}
+        )
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_my_disputes_requires_auth(self, client: AsyncClient):
+        """My disputes should require authentication."""
+        response = await client.get("/api/v1/disputes/my")
+        assert response.status_code == 401
+
+
+class TestAuditEndpoints:
+    """Tests for audit log endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_audit_requires_auth(self, client: AsyncClient):
+        """Audit log should require authentication."""
+        response = await client.get("/api/v1/audit")
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_audit_stats_requires_auth(self, client: AsyncClient):
+        """Audit stats should require authentication."""
+        response = await client.get("/api/v1/audit/stats")
+        assert response.status_code == 401
+
+
+class TestOAuthEndpoints:
+    """Tests for OAuth authentication endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_google_oauth_url(self, client: AsyncClient):
+        """Should return Google OAuth URL (even if not configured)."""
+        response = await client.get(
+            "/api/v1/oauth/google/url",
+            params={"redirect_uri": "http://localhost:3000/callback"}
+        )
+        # 200 if configured, 501 if not
+        assert response.status_code in [200, 501]
+
+    @pytest.mark.asyncio
+    async def test_google_oauth_missing_code(self, client: AsyncClient):
+        """Google OAuth should reject missing authorization code."""
+        response = await client.post(
+            "/api/v1/oauth/google",
+            json={"redirect_uri": "http://localhost:3000/callback"}
+        )
+        # 422 for validation error
+        assert response.status_code == 422
+
+
+class TestExportEndpoints:
+    """Tests for export and GDPR endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_leads_export_requires_auth(self, client: AsyncClient):
+        """Leads export should require authentication."""
+        response = await client.get("/api/v1/exports/reports/leads")
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_gdpr_export_requires_auth(self, client: AsyncClient):
+        """GDPR export should require authentication."""
+        response = await client.get("/api/v1/exports/gdpr/export")
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_lead_import_requires_auth(self, client: AsyncClient):
+        """Lead CSV import should require authentication."""
+        response = await client.post("/api/v1/exports/leads/import")
+        assert response.status_code in [401, 422]
+
+
+class TestPasswordResetEndpoints:
+    """Tests for password reset endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_forgot_password_accepts_any_email(self, client: AsyncClient):
+        """Forgot password should accept any email (prevent enumeration)."""
+        response = await client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": "nonexistent@example.com"}
+        )
+        # Should always return success to prevent email enumeration
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_reset_password_invalid_token(self, client: AsyncClient):
+        """Reset password should reject invalid token."""
+        response = await client.post(
+            "/api/v1/auth/reset-password",
+            json={
+                "token": "invalid-token",
+                "new_password": "NewSecurePass123!@#"
+            }
+        )
+        assert response.status_code == 400
+
+
+class TestCallQualityEndpoints:
+    """Tests for call quality metrics endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_quality_requires_auth(self, client: AsyncClient):
+        """Quality metrics submission should require authentication."""
+        response = await client.post(
+            "/api/v1/calls/test-room/quality",
+            json={"video_bitrate_kbps": 1500}
+        )
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_missed_call_not_found(self, client: AsyncClient):
+        """Missed call endpoint should return 404 for unknown room."""
+        response = await client.post("/api/v1/calls/nonexistent-room/missed")
+        assert response.status_code == 404

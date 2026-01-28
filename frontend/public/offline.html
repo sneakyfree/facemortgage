@@ -3,212 +3,145 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#2563eb">
   <title>Offline - FaceMortgage</title>
-  <link rel="icon" href="/favicon.ico">
-  <link rel="manifest" href="/manifest.json">
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
-
+    
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
       min-height: 100vh;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 20px;
-      color: #ffffff;
     }
-
-    .container {
+    
+    .offline-container {
+      background: white;
+      border-radius: 16px;
+      padding: 48px;
       text-align: center;
-      max-width: 500px;
-      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     }
-
-    .icon {
-      width: 120px;
-      height: 120px;
-      margin-bottom: 32px;
-      opacity: 0.9;
+    
+    .offline-icon {
+      font-size: 64px;
+      margin-bottom: 24px;
     }
-
-    .icon svg {
-      width: 100%;
-      height: 100%;
-    }
-
+    
     h1 {
-      font-size: 28px;
-      font-weight: 700;
-      margin-bottom: 16px;
-      color: #ffffff;
+      color: #1e3a5f;
+      font-size: 24px;
+      margin-bottom: 12px;
     }
-
+    
     p {
-      font-size: 18px;
+      color: #666;
       line-height: 1.6;
-      color: rgba(255, 255, 255, 0.9);
-      margin-bottom: 32px;
+      margin-bottom: 24px;
     }
-
-    .retry-button {
+    
+    .retry-btn {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: white;
+      border: none;
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .retry-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+    
+    .retry-btn:active {
+      transform: translateY(0);
+    }
+    
+    .saved-leads {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    .saved-leads h2 {
+      color: #374151;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    
+    .lead-count {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 14px 32px;
-      background-color: #ffffff;
-      color: #2563eb;
-      font-size: 16px;
-      font-weight: 600;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-    }
-
-    .retry-button:hover {
-      background-color: #f3f4f6;
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-    }
-
-    .retry-button:active {
-      transform: translateY(0);
-    }
-
-    .retry-button svg {
-      width: 20px;
-      height: 20px;
-    }
-
-    .tips {
-      margin-top: 48px;
-      padding: 24px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      text-align: left;
-    }
-
-    .tips h2 {
-      font-size: 16px;
-      font-weight: 600;
-      margin-bottom: 12px;
-      color: #ffffff;
-    }
-
-    .tips ul {
-      list-style: none;
-      padding: 0;
-    }
-
-    .tips li {
+      background: #f3f4f6;
+      padding: 8px 16px;
+      border-radius: 20px;
+      color: #4b5563;
       font-size: 14px;
-      color: rgba(255, 255, 255, 0.85);
-      padding: 8px 0;
-      padding-left: 24px;
-      position: relative;
     }
-
-    .tips li::before {
-      content: '\2713';
-      position: absolute;
-      left: 0;
-      color: #34d399;
-    }
-
-    .brand {
-      margin-top: 48px;
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.6);
-    }
-
-    .brand strong {
-      color: rgba(255, 255, 255, 0.8);
-    }
-
-    @media (max-width: 480px) {
-      .icon {
-        width: 80px;
-        height: 80px;
-      }
-
-      h1 {
-        font-size: 24px;
-      }
-
-      p {
-        font-size: 16px;
-      }
-
-      .retry-button {
-        padding: 12px 28px;
-        font-size: 15px;
-      }
+    
+    .sync-note {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 8px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="icon">
-      <!-- Offline cloud icon -->
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9.75v6.75m0 0l-3-3m3 3l3-3m-8.25 6a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-      </svg>
-    </div>
-
+  <div class="offline-container">
+    <div class="offline-icon">📡</div>
     <h1>You're Offline</h1>
     <p>
-      It looks like you've lost your internet connection.
-      Please check your connection and try again.
+      It looks like you've lost your internet connection. 
+      Don't worry – your data is saved and will sync when you're back online.
     </p>
-
-    <button class="retry-button" onclick="window.location.reload()">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-      </svg>
-      Retry Connection
+    <button class="retry-btn" onclick="window.location.reload()">
+      Try Again
     </button>
-
-    <div class="tips">
-      <h2>While you're offline, you can:</h2>
-      <ul>
-        <li>Review any cached pages from your previous sessions</li>
-        <li>Check your WiFi or mobile data connection</li>
-        <li>Try moving to an area with better signal</li>
-        <li>Toggle airplane mode on and off</li>
-      </ul>
-    </div>
-
-    <div class="brand">
-      <strong>FaceMortgage</strong> - Connect with mortgage professionals
+    
+    <div class="saved-leads">
+      <h2>Saved for Later</h2>
+      <div class="lead-count" id="savedCount">
+        📊 <span id="leadCount">0</span> leads pending sync
+      </div>
+      <p class="sync-note">
+        These will automatically upload when connected
+      </p>
     </div>
   </div>
-
+  
   <script>
-    // Auto-retry when online
+    // Check for cached leads
+    if ('localStorage' in window) {
+      try {
+        const pendingLeads = JSON.parse(localStorage.getItem('pending_leads') || '[]');
+        document.getElementById('leadCount').textContent = pendingLeads.length;
+      } catch (e) {
+        console.log('Could not read pending leads');
+      }
+    }
+    
+    // Auto-retry every 30 seconds
+    setTimeout(() => {
+      window.location.reload();
+    }, 30000);
+    
+    // Listen for online event
     window.addEventListener('online', () => {
       window.location.reload();
     });
-
-    // Check connection status periodically
-    setInterval(() => {
-      if (navigator.onLine) {
-        // Verify actual connectivity with a fetch
-        fetch('/api/health', { method: 'HEAD', cache: 'no-store' })
-          .then(() => window.location.reload())
-          .catch(() => {
-            // Still offline despite navigator.onLine
-          });
-      }
-    }, 5000);
   </script>
 </body>
 </html>

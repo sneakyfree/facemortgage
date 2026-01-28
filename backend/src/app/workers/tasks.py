@@ -92,6 +92,17 @@ EMAIL_TEMPLATES = {
             <p>Tip: Keep your status set to "Available" when ready to take calls!</p>
         """,
     },
+    "password_reset": {
+        "subject": "Reset Your Password - FaceMortgage",
+        "html": """
+            <h1>Password Reset Request</h1>
+            <p>Hi {first_name},</p>
+            <p>We received a request to reset your password. Click the link below to create a new password:</p>
+            <p><a href="{reset_url}" style="background: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Reset Password</a></p>
+            <p>This link will expire in 1 hour.</p>
+            <p>If you didn't request this, you can safely ignore this email.</p>
+        """,
+    },
 }
 
 

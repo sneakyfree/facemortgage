@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = "redis://localhost:6379/0"
 
+    # TimescaleDB (metrics database)
+    timescale_database_url: Optional[str] = "postgresql://facemortgage_metrics:metrics_dev@localhost:5433/facemortgage_metrics"
+
+
     # Security - SECRET_KEY must be set via environment variable
     secret_key: str = ""
     algorithm: str = "HS256"
@@ -121,6 +125,12 @@ class Settings(BaseSettings):
     modex_api_key: Optional[str] = None
     modex_base_url: str = "https://api.modex.com/v1"
 
+    # NMLS Consumer Access B2B API
+    nmls_api_key: Optional[str] = None
+    nmls_api_base_url: str = "https://nmlsconsumeraccess.org/api/v1"
+    nmls_cache_ttl_hours: int = 24  # Cache verification results for 24 hours
+    nmls_use_mock: bool = True  # Set to False when real API credentials available
+
     # WebRTC
     turn_server_url: Optional[str] = None
     turn_server_username: Optional[str] = None
@@ -140,6 +150,10 @@ class Settings(BaseSettings):
     twilio_sid: Optional[str] = None
     twilio_auth_token: Optional[str] = None
     twilio_phone: Optional[str] = None
+
+    # OAuth (Google)
+    google_client_id: Optional[str] = None
+    google_client_secret: Optional[str] = None
 
     # Video Storage
     video_storage_path: str = "./uploads/videos"

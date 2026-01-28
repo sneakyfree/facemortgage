@@ -112,6 +112,14 @@ class ProfessionalProfile(Base):
         back_populates="realtor",
     )
 
+    # Video moderation records
+    video_moderations: Mapped[List["VideoModeration"]] = relationship(
+        "VideoModeration",
+        back_populates="professional",
+        order_by="desc(VideoModeration.created_at)",
+        cascade="all, delete-orphan",
+    )
+
 
 class Specialty(Base):
     __tablename__ = "specialties"
@@ -191,3 +199,4 @@ class ProfessionalServiceArea(Base):
 # Import for type hints
 from src.app.models.user import User
 from src.app.models.partnership import Partnership
+from src.app.models.moderation import VideoModeration

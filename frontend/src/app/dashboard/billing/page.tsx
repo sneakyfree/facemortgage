@@ -2,8 +2,10 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { apiClient } from '@/lib/api/client';
 import { logger } from '@/lib/utils';
+import UsageMeter from '@/components/billing/UsageMeter';
 
 interface SubscriptionPlan {
   tier: string;
@@ -174,11 +176,10 @@ function BillingPageContent() {
         {/* Message */}
         {message && (
           <div
-            className={`p-4 rounded-lg ${
-              message.type === 'success'
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
-            }`}
+            className={`p-4 rounded-lg ${message.type === 'success'
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
+              }`}
           >
             {message.text}
           </div>
@@ -223,6 +224,49 @@ function BillingPageContent() {
           </div>
         )}
 
+        {/* Quick Links and Usage */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-semibold mb-4">Usage This Period</h2>
+            <UsageMeter className="mb-4" />
+            <Link
+              href="/dashboard/billing/invoices"
+              className="text-blue-600 hover:underline text-sm"
+            >
+              View Invoice History →
+            </Link>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-semibold mb-4">Quick Links</h2>
+            <div className="space-y-2">
+              <Link
+                href="/dashboard/billing/invoices"
+                className="block p-3 rounded-lg hover:bg-gray-50 text-gray-700"
+              >
+                📄 Invoice History
+              </Link>
+              <Link
+                href="/dashboard/billing/bid"
+                className="block p-3 rounded-lg hover:bg-gray-50 text-gray-700"
+              >
+                🎯 Bid Wallet & Placement
+              </Link>
+              <Link
+                href="/dashboard/settings/notifications"
+                className="block p-3 rounded-lg hover:bg-gray-50 text-gray-700"
+              >
+                🔔 Notification Settings
+              </Link>
+              <Link
+                href="/dashboard/settings/privacy"
+                className="block p-3 rounded-lg hover:bg-gray-50 text-gray-700"
+              >
+                🔒 Privacy & Data
+              </Link>
+            </div>
+          </div>
+        </div>
+
         {/* Subscription Plans */}
         <div>
           <h2 className="text-xl font-semibold mb-4">Subscription Plans</h2>
@@ -230,11 +274,10 @@ function BillingPageContent() {
             {plans.map((plan) => (
               <div
                 key={plan.tier}
-                className={`bg-white rounded-xl shadow-sm p-6 border-2 ${
-                  subscription?.tier === plan.tier
-                    ? 'border-blue-500'
-                    : 'border-transparent'
-                }`}
+                className={`bg-white rounded-xl shadow-sm p-6 border-2 ${subscription?.tier === plan.tier
+                  ? 'border-blue-500'
+                  : 'border-transparent'
+                  }`}
               >
                 <h3 className="text-lg font-semibold">{plan.name}</h3>
                 <p className="text-3xl font-bold mt-2">
@@ -266,11 +309,10 @@ function BillingPageContent() {
                 <button
                   onClick={() => handleSubscribe(plan.tier)}
                   disabled={subscription?.tier === plan.tier}
-                  className={`w-full mt-6 py-2 rounded-lg font-medium ${
-                    subscription?.tier === plan.tier
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
+                  className={`w-full mt-6 py-2 rounded-lg font-medium ${subscription?.tier === plan.tier
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
                 >
                   {subscription?.tier === plan.tier ? 'Current Plan' : 'Select Plan'}
                 </button>

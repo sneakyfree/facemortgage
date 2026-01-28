@@ -19,6 +19,9 @@ from src.app.models.analytics import GridImpression, GridClick
 from src.app.models.scheduled_call import ScheduledCall, ScheduledCallStatus
 from src.app.models.soft_lead import SoftLead, SoftLeadStatus
 from src.app.models.partnership import Partnership, PartnershipStatus, PartnershipTier, PartnershipReferral
+from src.app.models.moderation import VideoModeration, ModerationStatus
+from src.app.models.dispute import Dispute, DisputeMessage, DisputeType, DisputeStatus, DisputePriority
+from src.app.models.audit import AuditLog, AuditEventType
 
 __all__ = [
     "User",
@@ -54,4 +57,13 @@ __all__ = [
     "PartnershipStatus",
     "PartnershipTier",
     "PartnershipReferral",
+    "VideoModeration",
+    "ModerationStatus",
+    "Dispute",
+    "DisputeMessage",
+    "DisputeType",
+    "DisputeStatus",
+    "DisputePriority",
+    "AuditLog",
+    "AuditEventType",
 ]

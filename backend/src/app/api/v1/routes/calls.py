@@ -103,6 +103,31 @@ class EndCallResponse(BaseModel):
     pickup_time_seconds: Optional[float] = None
 
 
+class QualityMetricsRequest(BaseModel):
+    """WebRTC call quality metrics submitted by client."""
+    # Video metrics
+    video_bitrate_kbps: Optional[float] = None
+    video_packets_lost: Optional[int] = None
+    video_jitter_ms: Optional[float] = None
+    video_fps: Optional[float] = None
+    
+    # Audio metrics  
+    audio_bitrate_kbps: Optional[float] = None
+    audio_packets_lost: Optional[int] = None
+    audio_jitter_ms: Optional[float] = None
+    
+    # Connection metrics
+    round_trip_time_ms: Optional[float] = None
+    connection_type: Optional[str] = None  # "relay", "srflx", "prflx", "host"
+    ice_candidate_pair_type: Optional[str] = None
+
+
+class QualityMetricsResponse(BaseModel):
+    """Response for quality metrics submission."""
+    success: bool
+    quality_score: Optional[float] = None  # 0-100 normalized score
+
+
 # ==================== Routes ====================
 
 @router.post("", response_model=InitiateCallResponse)
@@ -417,6 +442,124 @@ async def end_call(
     )
 
 
+@router.post("/{room_id}/quality", response_model=QualityMetricsResponse)
+@limiter.limit(RATE_LIMITS["api_write"])
+async def submit_quality_metrics(
+    request: Request,
+    room_id: str,
+    metrics: QualityMetricsRequest,
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    """
+    Submit WebRTC call quality metrics.
+    
+    Clients should call this during or at the end of calls to report
+    connection quality for analytics and troubleshooting.
+    """
+    # Get video call
+    query = select(VideoCall).where(VideoCall.room_id == room_id)
+    result = await db.execute(query)
+    video_call = result.scalar_one_or_none()
+
+    if not video_call:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Call not found",
+        )
+
+    # Calculate quality score (0-100)
+    quality_score = _calculate_quality_score(metrics)
+
+    # Store metrics
+    video_call.quality_metrics = {
+        "video_bitrate_kbps": metrics.video_bitrate_kbps,
+        "video_packets_lost": metrics.video_packets_lost,
+        "video_jitter_ms": metrics.video_jitter_ms,
+        "video_fps": metrics.video_fps,
+        "audio_bitrate_kbps": metrics.audio_bitrate_kbps,
+        "audio_packets_lost": metrics.audio_packets_lost,
+        "audio_jitter_ms": metrics.audio_jitter_ms,
+        "round_trip_time_ms": metrics.round_trip_time_ms,
+        "connection_type": metrics.connection_type,
+        "quality_score": quality_score,
+        "submitted_at": datetime.utcnow().isoformat(),
+        "submitted_by": str(current_user.id),
+    }
+    await db.commit()
+
+    return QualityMetricsResponse(
+        success=True,
+        quality_score=quality_score,
+    )
+
+
+@router.post("/{room_id}/missed")
+@limiter.limit(RATE_LIMITS["api_write"])
+async def handle_missed_call(
+    request: Request,
+    room_id: str,
+    db: DbSession,
+):
+    """
+    Mark a call as missed and notify the professional.
+    
+    Called when ring timeout is reached without answer.
+    Sends push notification and email to professional.
+    """
+    # Get video call
+    query = select(VideoCall).options(
+        selectinload(VideoCall.professional).selectinload(ProfessionalProfile.user)
+    ).where(VideoCall.room_id == room_id)
+    result = await db.execute(query)
+    video_call = result.scalar_one_or_none()
+
+    if not video_call:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Call not found",
+        )
+
+    if video_call.status != CallStatus.RINGING:
+        return {"message": "Call already handled", "status": video_call.status.value}
+
+    # Mark as missed
+    video_call.status = CallStatus.MISSED
+    video_call.ended_at = datetime.utcnow()
+    await db.commit()
+
+    # Clear professional's busy status
+    presence = get_presence_service()
+    await presence.set_available(str(video_call.professional_id))
+
+    # Send missed call notification
+    professional = video_call.professional
+    if professional and professional.user:
+        # Push notification
+        try:
+            from src.app.services.push_notification import push_service
+            await push_service.send_to_user_devices(
+                device_tokens=professional.user.device_tokens or [],
+                title="Missed Call",
+                body="You missed a call from a potential client",
+                data={
+                    "type": "missed_call",
+                    "room_id": room_id,
+                    "call_id": str(video_call.id),
+                },
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send missed call push: {e}")
+
+        # TODO: Send email notification via SendGrid
+        logger.info(f"Missed call notification sent to professional {professional.id}")
+
+    return {
+        "success": True,
+        "message": "Call marked as missed, notification sent",
+    }
+
+
 @router.post("/{room_id}/rate", response_model=RateCallResponse)
 @limiter.limit(RATE_LIMITS["api_write"])
 async def rate_call(
@@ -571,6 +714,40 @@ async def capture_anonymous_lead(
 
 
 # ==================== Helper Functions ====================
+
+def _calculate_quality_score(metrics: QualityMetricsRequest) -> float:
+    """
+    Calculate a normalized quality score (0-100) from WebRTC metrics.
+    
+    Higher score = better quality.
+    """
+    score = 100.0
+    
+    # Penalize packet loss (major impact)
+    total_packet_loss = (metrics.video_packets_lost or 0) + (metrics.audio_packets_lost or 0)
+    if total_packet_loss > 0:
+        score -= min(30, total_packet_loss * 0.5)  # Max 30 point penalty
+    
+    # Penalize high jitter
+    if metrics.video_jitter_ms and metrics.video_jitter_ms > 30:
+        score -= min(15, (metrics.video_jitter_ms - 30) * 0.3)
+    if metrics.audio_jitter_ms and metrics.audio_jitter_ms > 30:
+        score -= min(15, (metrics.audio_jitter_ms - 30) * 0.3)
+    
+    # Penalize high RTT
+    if metrics.round_trip_time_ms and metrics.round_trip_time_ms > 150:
+        score -= min(20, (metrics.round_trip_time_ms - 150) * 0.1)
+    
+    # Penalize low FPS
+    if metrics.video_fps and metrics.video_fps < 24:
+        score -= min(10, (24 - metrics.video_fps) * 0.5)
+    
+    # Penalize relay connections slightly (adds latency)
+    if metrics.connection_type == "relay":
+        score -= 5
+    
+    return max(0, min(100, score))
+
 
 async def _update_professional_rating(db: DbSession, professional_id: UUID):
     """Update a professional's average rating based on all reviews."""

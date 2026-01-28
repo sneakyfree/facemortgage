@@ -4,6 +4,10 @@ import "./globals.css";
 import Providers from "./providers";
 import Header from "@/components/layout/Header";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import { CookieConsent } from "@/components/CookieConsent";
+
+// Initialize Sentry error tracking
+import "@/lib/sentry";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -66,6 +70,7 @@ export default function RootLayout({
           <ServiceWorkerRegistration />
           <Header />
           <main id="main-content">{children}</main>
+          <CookieConsent />
         </Providers>
       </body>
     </html>

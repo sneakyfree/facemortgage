@@ -285,3 +285,204 @@ async def logout(response: Response):
     # Clear auth cookies
     clear_auth_cookies(response)
     return LogoutResponse(message="Successfully logged out")
+
+
+class ResendVerificationResponse(BaseModel):
+    """Response for resend verification endpoint."""
+    message: str
+    success: bool
+
+
+@router.post("/resend-verification", response_model=ResendVerificationResponse)
+@limiter.limit("3/hour")  # Rate limit to prevent abuse
+async def resend_verification_email(request: Request, current_user: CurrentUser, db: DbSession):
+    """
+    Resend email verification email.
+    
+    Sends a new verification email to the user's registered email address.
+    Rate limited to 3 attempts per hour.
+    """
+    if current_user.email_verified:
+        return ResendVerificationResponse(
+            message="Email is already verified",
+            success=False,
+        )
+    
+    import secrets
+    import logging
+    from src.app.services.email_service import get_email_service
+    
+    logger = logging.getLogger(__name__)
+    
+    # Generate verification token
+    verification_token = secrets.token_urlsafe(32)
+    
+    # Store token hash in user record (expires in 24 hours)
+    user = await db.get(User, current_user.id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.email_verification_token = get_password_hash(verification_token)
+    user.email_verification_expires = datetime.utcnow() + timedelta(hours=24)
+    await db.commit()
+    
+    # Send verification email
+    verification_url = f"{settings.frontend_url}/auth/verify-email?token={verification_token}"
+    
+    email_service = get_email_service()
+    sent = await email_service.send_email(
+        to_email=user.email,
+        template_name="email_verification",
+        template_data={
+            "name": user.first_name or "User",
+            "verification_url": verification_url,
+        }
+    )
+    
+    if not sent:
+        logger.warning(f"Failed to send verification email to {user.email}")
+    else:
+        logger.info(f"Verification email sent to {user.email}")
+    
+    return ResendVerificationResponse(
+        message="Verification email sent! Please check your inbox.",
+        success=True,
+    )
+
+
+# ==================== Password Reset ====================
+
+class ForgotPasswordRequest(BaseModel):
+    """Request for forgot password."""
+    email: str
+
+
+class ForgotPasswordResponse(BaseModel):
+    """Response for forgot password."""
+    message: str
+    success: bool
+
+
+class ResetPasswordRequest(BaseModel):
+    """Request to reset password with token."""
+    token: str
+    new_password: str
+
+
+class ResetPasswordResponse(BaseModel):
+    """Response for password reset."""
+    message: str
+    success: bool
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+@limiter.limit("5/hour")
+async def forgot_password(
+    request: Request,
+    body: ForgotPasswordRequest,
+    db: DbSession,
+):
+    """
+    Request password reset email.
+    
+    Sends an email with a reset token if the email exists.
+    Always returns success to prevent email enumeration.
+    """
+    import secrets
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # Find user
+    result = await db.execute(select(User).where(User.email == body.email.lower()))
+    user = result.scalar_one_or_none()
+
+    if user:
+        # Generate reset token
+        reset_token = secrets.token_urlsafe(32)
+        
+        # Store token hash in user record (expires in 1 hour)
+        user.password_reset_token = get_password_hash(reset_token)
+        user.password_reset_expires = datetime.utcnow() + timedelta(hours=1)
+        await db.commit()
+
+        # Send email with reset link
+        reset_url = f"{settings.frontend_url}/reset-password?token={reset_token}"
+        
+        # Queue email task
+        try:
+            from src.app.workers.tasks import send_email_task
+            send_email_task.delay(
+                to_email=user.email,
+                subject="Reset Your Password - FaceMortgage",
+                template="password_reset",
+                context={
+                    "first_name": user.first_name,
+                    "reset_url": reset_url,
+                },
+            )
+        except Exception as e:
+            logger.warning(f"Failed to queue password reset email: {e}")
+
+        logger.info(f"Password reset requested for: {user.email}")
+
+    # Always return success to prevent email enumeration
+    return ForgotPasswordResponse(
+        message="If an account with that email exists, we've sent a password reset link.",
+        success=True,
+    )
+
+
+@router.post("/reset-password", response_model=ResetPasswordResponse)
+@limiter.limit("10/hour")
+async def reset_password(
+    request: Request,
+    body: ResetPasswordRequest,
+    db: DbSession,
+):
+    """
+    Reset password using token from forgot-password email.
+    
+    Validates the token and updates the password if valid.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # Validate password strength
+    validate_password_strength(body.new_password)
+
+    # Find users with unexpired reset tokens
+    result = await db.execute(
+        select(User).where(
+            User.password_reset_expires > datetime.utcnow()
+        )
+    )
+    users = result.scalars().all()
+
+    # Check token against each user (secure comparison)
+    target_user = None
+    for user in users:
+        if user.password_reset_token and verify_password(body.token, user.password_reset_token):
+            target_user = user
+            break
+
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+
+    # Update password
+    target_user.password_hash = get_password_hash(body.new_password)
+    target_user.password_reset_token = None
+    target_user.password_reset_expires = None
+    target_user.failed_login_attempts = 0
+    target_user.locked_until = None
+    
+    await db.commit()
+
+    logger.info(f"Password reset successful for: {target_user.email}")
+
+    return ResetPasswordResponse(
+        message="Password reset successful! You can now log in with your new password.",
+        success=True,
+    )

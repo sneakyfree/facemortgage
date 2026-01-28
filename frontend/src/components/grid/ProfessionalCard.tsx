@@ -50,7 +50,24 @@ export default function ProfessionalCard({ professional, onCallClick }: Professi
     >
       {/* Video/Avatar Area */}
       <div className="relative aspect-video bg-gray-900">
-        {professional.avatar_url ? (
+        {/* Show video preview on hover if available */}
+        {isHovered && professional.video_url ? (
+          <video
+            src={professional.video_url}
+            className="w-full h-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+        ) : professional.thumbnail_url ? (
+          <img
+            src={professional.thumbnail_url}
+            alt={`${professional.first_name} ${professional.last_name} video preview`}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : professional.avatar_url ? (
           <img
             src={professional.avatar_url}
             alt={`${professional.first_name} ${professional.last_name}`}

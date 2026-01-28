@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FaceMortgage Widget Test Harness</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #1a1a1a;
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+        }
+
+        input,
+        select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button.secondary {
+            background: #6b7280;
+        }
+
+        button.secondary:hover {
+            background: #4b5563;
+        }
+
+        .widget-preview {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .widget-header h2 {
+            font-size: 18px;
+            color: #1a1a1a;
+        }
+
+        .size-badge {
+            background: #e5e7eb;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #374151;
+        }
+
+        .iframe-container {
+            border: 2px dashed #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fafafa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+        }
+
+        .iframe-container iframe {
+            border: none;
+            display: block;
+        }
+
+        .embed-code-section {
+            margin-top: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .embed-code-section h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #1a1a1a;
+        }
+
+        pre {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .event-log {
+            margin-top: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .event-log h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #1a1a1a;
+        }
+
+        .event-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            background: #fafafa;
+        }
+
+        .event-item {
+            padding: 4px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .event-item:last-child {
+            border-bottom: none;
+        }
+
+        .timestamp {
+            color: #9ca3af;
+        }
+
+        .event-type {
+            color: #2563eb;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🏠 FaceMortgage Widget Test Harness</h1>
+
+        <div class="controls">
+            <div class="control-row">
+                <div class="control-group">
+                    <label for="professionalId">Professional ID</label>
+                    <input type="text" id="professionalId" placeholder="e.g., abc-123-xyz">
+                </div>
+                <div class="control-group">
+                    <label for="partnerId">Partner ID</label>
+                    <input type="text" id="partnerId" placeholder="your-partner-id" value="test-harness">
+                </div>
+                <div class="control-group">
+                    <label for="theme">Theme</label>
+                    <select id="theme">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="control-group">
+                    <label for="width">Width</label>
+                    <input type="text" id="width" value="400" placeholder="400">
+                </div>
+                <div class="control-group">
+                    <label for="height">Height</label>
+                    <input type="text" id="height" value="600" placeholder="600">
+                </div>
+                <div class="control-group" style="justify-content: flex-end;">
+                    <button onclick="loadWidget()">Load Widget</button>
+                </div>
+                <div class="control-group" style="justify-content: flex-end;">
+                    <button class="secondary" onclick="clearEventLog()">Clear Log</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="widget-preview">
+            <div class="widget-header">
+                <h2>Widget Preview</h2>
+                <span class="size-badge" id="sizeBadge">400 × 600</span>
+            </div>
+            <div class="iframe-container" id="iframeContainer">
+                <p style="color: #9ca3af;">Configure options above and click "Load Widget"</p>
+            </div>
+        </div>
+
+        <div class="embed-code-section">
+            <h3>Embed Code</h3>
+            <pre id="embedCode">&lt;!-- Configure options above to generate embed code --&gt;</pre>
+        </div>
+
+        <div class="event-log">
+            <h3>Event Log (postMessage)</h3>
+            <div class="event-list" id="eventList">
+                <div class="event-item">
+                    <span class="timestamp">[--:--:--]</span>
+                    Listening for widget events...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = window.location.hostname === 'localhost'
+            ? 'http://localhost:3000'
+            : 'https://facemortgage.com';
+
+        function loadWidget() {
+            const professionalId = document.getElementById('professionalId').value;
+            const partnerId = document.getElementById('partnerId').value;
+            const theme = document.getElementById('theme').value;
+            const width = document.getElementById('width').value || '400';
+            const height = document.getElementById('height').value || '600';
+
+            // Build URL
+            const params = new URLSearchParams();
+            if (professionalId) params.append('professional_id', professionalId);
+            if (partnerId) params.append('partner_id', partnerId);
+            params.append('theme', theme);
+
+            const widgetUrl = `${BASE_URL}/embed/widget?${params.toString()}`;
+
+            // Update size badge
+            document.getElementById('sizeBadge').textContent = `${width} × ${height}`;
+
+            // Create iframe
+            const container = document.getElementById('iframeContainer');
+            container.innerHTML = `
+                <iframe 
+                    id="facemortgage-widget"
+                    src="${widgetUrl}"
+                    width="${width}"
+                    height="${height}"
+                    allow="camera; microphone"
+                    loading="lazy"
+                ></iframe>
+            `;
+
+            // Generate embed code
+            const embedCode = `<!-- FaceMortgage Widget -->
+<iframe 
+    id="facemortgage-widget"
+    src="${widgetUrl}"
+    width="${width}"
+    height="${height}"
+    allow="camera; microphone"
+    loading="lazy"
+    style="border: none;"
+></iframe>
+
+<script>
+    // Listen for widget events
+    window.addEventListener('message', function(event) {
+        if (event.origin !== '${BASE_URL}') return;
+        if (event.data.type === 'fm-call-ended') {
+            console.log('Call ended');
+        } else if (event.data.type === 'fm-call-success') {
+            console.log('Call completed successfully');
+        }
+    });
+<\/script>`;
+
+            document.getElementById('embedCode').textContent = embedCode;
+
+            logEvent('widget-loaded', { url: widgetUrl, width, height });
+        }
+
+        function logEvent(type, data) {
+            const eventList = document.getElementById('eventList');
+            const time = new Date().toLocaleTimeString();
+            const eventItem = document.createElement('div');
+            eventItem.className = 'event-item';
+            eventItem.innerHTML = `
+                <span class="timestamp">[${time}]</span> 
+                <span class="event-type">${type}</span>
+                ${data ? `: ${JSON.stringify(data)}` : ''}
+            `;
+            eventList.appendChild(eventItem);
+            eventList.scrollTop = eventList.scrollHeight;
+        }
+
+        function clearEventLog() {
+            const eventList = document.getElementById('eventList');
+            eventList.innerHTML = `
+                <div class="event-item">
+                    <span class="timestamp">[${new Date().toLocaleTimeString()}]</span> 
+                    Log cleared. Listening for widget events...
+                </div>
+            `;
+        }
+
+        // Listen for postMessage events from widget
+        window.addEventListener('message', function (event) {
+            // Log any message from the widget
+            if (event.data && event.data.type && event.data.type.startsWith('fm-')) {
+                logEvent(event.data.type, event.data);
+            }
+        });
+
+        // Initial log
+        logEvent('harness-ready', { baseUrl: BASE_URL });
+    </script>
+</body>
+
+</html>

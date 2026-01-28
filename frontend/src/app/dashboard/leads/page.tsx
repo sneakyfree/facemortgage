@@ -18,8 +18,12 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Download,
+  Upload,
+  Star,
 } from 'lucide-react';
 import { leadsApi } from '@/lib/api/endpoints';
+import { apiClient } from '@/lib/api/client';
 import type { LeadStatus as LeadStatusType } from '@/types';
 import { logger } from '@/lib/utils';
 
@@ -51,6 +55,8 @@ interface Lead {
   activity_count?: number;
   created_at?: string;
   updated_at?: string;
+  lead_score?: number; // 0-100 AI-generated score
+  source?: string;
 }
 
 const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bgColor: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -168,6 +174,22 @@ export default function LeadsDashboard() {
     );
   }
 
+  const handleExport = async () => {
+    try {
+      const response = await apiClient.get('/leads/export', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `leads_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      logger.error('Export failed:', err);
+      alert('Failed to export leads');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -177,10 +199,26 @@ export default function LeadsDashboard() {
             <h1 className="text-2xl font-bold text-gray-900">Lead Management</h1>
             <p className="text-gray-500 mt-1">Track and manage your leads</p>
           </div>
-          <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-            <Plus className="w-5 h-5" />
-            Add Lead
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 border px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Export
+            </button>
+            <a
+              href="/dashboard/leads/import"
+              className="flex items-center gap-2 border px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              Import
+            </a>
+            <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+              <Plus className="w-5 h-5" />
+              Add Lead
+            </button>
+          </div>
         </div>
       </div>
 
@@ -249,11 +287,10 @@ export default function LeadsDashboard() {
                   <button
                     key={status}
                     onClick={() => setStatusFilter(status as LeadStatus)}
-                    className={`flex-1 min-w-[120px] p-4 rounded-lg border-2 transition-all ${
-                      statusFilter === status
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-transparent hover:border-gray-200'
-                    }`}
+                    className={`flex-1 min-w-[120px] p-4 rounded-lg border-2 transition-all ${statusFilter === status
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-transparent hover:border-gray-200'
+                      }`}
                   >
                     <div className={`inline-flex p-2 rounded-lg ${config.bgColor} mb-2`}>
                       <Icon className={`w-4 h-4 ${config.color}`} />
@@ -299,9 +336,8 @@ export default function LeadsDashboard() {
                       setStatusFilter('all');
                       setShowStatusDropdown(false);
                     }}
-                    className={`w-full text-left px-4 py-2 hover:bg-gray-50 ${
-                      statusFilter === 'all' ? 'bg-blue-50 text-blue-700' : ''
-                    }`}
+                    className={`w-full text-left px-4 py-2 hover:bg-gray-50 ${statusFilter === 'all' ? 'bg-blue-50 text-blue-700' : ''
+                      }`}
                   >
                     All Status
                   </button>
@@ -312,9 +348,8 @@ export default function LeadsDashboard() {
                         setStatusFilter(status as LeadStatus);
                         setShowStatusDropdown(false);
                       }}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 ${
-                        statusFilter === status ? 'bg-blue-50 text-blue-700' : ''
-                      }`}
+                      className={`w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 ${statusFilter === status ? 'bg-blue-50 text-blue-700' : ''
+                        }`}
                     >
                       <span className={`w-2 h-2 rounded-full ${config.bgColor}`}></span>
                       {config.label}
@@ -344,6 +379,9 @@ export default function LeadsDashboard() {
                   </th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Next Followup
+                  </th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Score
                   </th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Activity
@@ -397,6 +435,21 @@ export default function LeadsDashboard() {
                           ) : (
                             <span className="text-sm text-gray-400">-</span>
                           )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full transition-all ${(lead.lead_score || 0) >= 80 ? 'bg-green-500' :
+                                    (lead.lead_score || 0) >= 50 ? 'bg-yellow-500' : 'bg-red-400'
+                                  }`}
+                                style={{ width: `${lead.lead_score || 0}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium text-gray-900 w-8">
+                              {lead.lead_score || 0}
+                            </span>
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm">

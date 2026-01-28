@@ -5,8 +5,12 @@ import type { CallState } from '@/hooks/useVideoCall';
 interface CallControlsProps {
   isMuted: boolean;
   isCameraOff: boolean;
+  isScreenSharing?: boolean;
+  isRecording?: boolean;
   onToggleMute: () => void;
   onToggleCamera: () => void;
+  onToggleScreenShare?: () => void;
+  onToggleRecording?: () => void;
   onEndCall: () => void;
   callState: CallState;
 }
@@ -14,8 +18,12 @@ interface CallControlsProps {
 export default function CallControls({
   isMuted,
   isCameraOff,
+  isScreenSharing = false,
+  isRecording = false,
   onToggleMute,
   onToggleCamera,
+  onToggleScreenShare,
+  onToggleRecording,
   onEndCall,
   callState,
 }: CallControlsProps) {
@@ -89,6 +97,48 @@ export default function CallControls({
             <CameraIcon className="w-6 h-6 text-white" aria-hidden="true" />
           )}
         </button>
+
+        {/* Screen Share Button */}
+        {onToggleScreenShare && (
+          <button
+            onClick={onToggleScreenShare}
+            disabled={!isCallActive}
+            aria-label={isScreenSharing ? 'Stop sharing screen' : 'Share screen'}
+            aria-pressed={isScreenSharing}
+            className={`
+              w-14 h-14 rounded-full flex items-center justify-center transition-all
+              focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black
+              ${isScreenSharing
+                ? 'bg-blue-500 hover:bg-blue-600'
+                : 'bg-gray-700 hover:bg-gray-600'
+              }
+              ${!isCallActive ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
+          >
+            <ScreenShareIcon className="w-6 h-6 text-white" aria-hidden="true" />
+          </button>
+        )}
+
+        {/* Recording Button */}
+        {onToggleRecording && (
+          <button
+            onClick={onToggleRecording}
+            disabled={!isCallActive}
+            aria-label={isRecording ? 'Stop recording' : 'Start recording'}
+            aria-pressed={isRecording}
+            className={`
+              w-14 h-14 rounded-full flex items-center justify-center transition-all
+              focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black
+              ${isRecording
+                ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                : 'bg-gray-700 hover:bg-gray-600'
+              }
+              ${!isCallActive ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
+          >
+            <RecordIcon className="w-6 h-6 text-white" aria-hidden="true" />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -171,3 +221,26 @@ function PhoneIcon({ className, 'aria-hidden': ariaHidden }: IconProps) {
     </svg>
   );
 }
+
+function ScreenShareIcon({ className, 'aria-hidden': ariaHidden }: IconProps) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden={ariaHidden}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+      />
+    </svg>
+  );
+}
+
+function RecordIcon({ className, 'aria-hidden': ariaHidden }: IconProps) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden={ariaHidden}>
+      <circle cx="12" cy="12" r="8" strokeWidth={2} />
+      <circle cx="12" cy="12" r="4" fill="currentColor" />
+    </svg>
+  );
+}
+

@@ -13,7 +13,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U facemortgage"]
+      test: [ "CMD-SHELL", "pg_isready -U facemortgage" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -27,7 +27,24 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: facemortgage-timescale
+    environment:
+      POSTGRES_USER: facemortgage_metrics
+      POSTGRES_PASSWORD: metrics_dev
+      POSTGRES_DB: facemortgage_metrics
+    ports:
+      - "5433:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U facemortgage_metrics" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -39,6 +56,7 @@ services:
     container_name: facemortgage-backend
     environment:
       - DATABASE_URL=postgresql://facemortgage:facemortgage_dev@postgres:5432/facemortgage
+      - TIMESCALE_DATABASE_URL=postgresql://facemortgage_metrics:metrics_dev@timescaledb:5432/facemortgage_metrics
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=dev-secret-key-change-in-production
       - DEBUG=true
@@ -50,6 +68,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      timescaledb:
         condition: service_healthy
     command: uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload
 
@@ -110,3 +130,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  timescale_data:
+
+

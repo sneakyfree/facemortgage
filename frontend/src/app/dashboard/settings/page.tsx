@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   User,
   Camera,
@@ -16,10 +16,328 @@ import {
   X,
   Check,
   AlertCircle,
+  Trash2,
+  RefreshCw,
+  Clock,
+  CheckCircle,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { apiClient } from '@/lib/api/client';
 import { logger } from '@/lib/utils';
+
+// Video upload component with drag-drop, progress, preview
+function VideoUploadSection({ onSuccess, onError }: { onSuccess: () => void; onError: (msg: string) => void }) {
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentVideo, setCurrentVideo] = useState<{
+    url: string;
+    status: 'pending' | 'approved' | 'rejected';
+    rejection_reason?: string;
+  } | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const MAX_SIZE_MB = 100;
+  const MAX_DURATION_SEC = 60;
+  const ALLOWED_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
+
+  useEffect(() => {
+    fetchCurrentVideo();
+  }, []);
+
+  async function fetchCurrentVideo() {
+    try {
+      const res = await apiClient.get('/professionals/me/video');
+      if (res.data?.video_url) {
+        setCurrentVideo({
+          url: res.data.video_url,
+          status: res.data.moderation_status || 'pending',
+          rejection_reason: res.data.rejection_reason,
+        });
+      }
+    } catch {
+      // No video yet
+    }
+  }
+
+  const validateFile = useCallback(async (file: File): Promise<string | null> => {
+    // Check type
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return 'Invalid file type. Please upload MP4, WebM, or MOV.';
+    }
+
+    // Check size
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      return `File too large. Maximum size is ${MAX_SIZE_MB}MB.`;
+    }
+
+    // Check duration using video element
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(video.src);
+        if (video.duration > MAX_DURATION_SEC) {
+          resolve(`Video too long. Maximum duration is ${MAX_DURATION_SEC} seconds.`);
+        } else {
+          resolve(null);
+        }
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src);
+        resolve('Could not read video file. Please try a different format.');
+      };
+      video.src = URL.createObjectURL(file);
+    });
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const file = e.dataTransfer.files[0];
+    if (file) await handleFileSelect(file);
+  }, []);
+
+  const handleFileSelect = async (file: File) => {
+    const error = await validateFile(file);
+    if (error) {
+      onError(error);
+      return;
+    }
+
+    // Create preview
+    setPreviewUrl(URL.createObjectURL(file));
+
+    // Upload file
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      await apiClient.post('/professionals/me/video', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          const percent = progressEvent.total
+            ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+            : 0;
+          setUploadProgress(percent);
+        },
+      });
+
+      setCurrentVideo({ url: URL.createObjectURL(file), status: 'pending' });
+      setPreviewUrl(null);
+      onSuccess();
+    } catch (err) {
+      onError('Failed to upload video. Please try again.');
+      setPreviewUrl(null);
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleRemoveVideo = async () => {
+    try {
+      await apiClient.delete('/professionals/me/video');
+      setCurrentVideo(null);
+    } catch {
+      onError('Failed to remove video.');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium text-gray-900">Pre-recorded Video</h3>
+        <p className="text-gray-500 mt-1">
+          Upload a short video that plays on your grid card when you&apos;re busy or away.
+          This helps borrowers get to know you before you&apos;re available.
+        </p>
+      </div>
+
+      {/* Current Video Status */}
+      {currentVideo && (
+        <div className="border rounded-xl overflow-hidden">
+          <video
+            src={currentVideo.url}
+            controls
+            className="w-full h-64 bg-black object-contain"
+          />
+          <div className="p-4 bg-gray-50 border-t flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {currentVideo.status === 'approved' && (
+                <span className="flex items-center gap-1 text-green-600">
+                  <CheckCircle className="w-5 h-5" />
+                  Approved
+                </span>
+              )}
+              {currentVideo.status === 'pending' && (
+                <span className="flex items-center gap-1 text-yellow-600">
+                  <Clock className="w-5 h-5" />
+                  Pending Review
+                </span>
+              )}
+              {currentVideo.status === 'rejected' && (
+                <div>
+                  <span className="flex items-center gap-1 text-red-600">
+                    <X className="w-5 h-5" />
+                    Rejected
+                  </span>
+                  {currentVideo.rejection_reason && (
+                    <p className="text-sm text-red-500 mt-1">{currentVideo.rejection_reason}</p>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 flex items-center gap-1"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Replace
+              </button>
+              <button
+                onClick={handleRemoveVideo}
+                className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center gap-1"
+              >
+                <Trash2 className="w-4 h-4" />
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Progress */}
+      {uploading && (
+        <div className="border rounded-xl p-6">
+          <div className="flex items-center gap-4 mb-4">
+            {previewUrl && (
+              <video src={previewUrl} className="w-24 h-16 object-cover rounded" muted />
+            )}
+            <div className="flex-1">
+              <p className="font-medium text-gray-900">Uploading video...</p>
+              <p className="text-sm text-gray-500">{uploadProgress}% complete</p>
+            </div>
+          </div>
+          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Drop Zone */}
+      {!currentVideo && !uploading && (
+        <div
+          onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+          onDragLeave={() => setIsDragOver(false)}
+          onDrop={handleDrop}
+          className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${isDragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+            }`}
+        >
+          <Video className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600 mb-2">
+            {isDragOver ? 'Drop your video here!' : 'Drag and drop a video file here, or'}
+          </p>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <Upload className="w-4 h-4 inline mr-2" />
+            Select Video
+          </button>
+          <p className="text-xs text-gray-400 mt-4">
+            MP4, WebM, or MOV • Maximum 100MB, 60 seconds
+          </p>
+        </div>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="video/mp4,video/webm,video/quicktime"
+        onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+        className="hidden"
+      />
+
+      {/* Guidelines */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h4 className="font-medium text-blue-900 mb-2">Video Guidelines</h4>
+        <ul className="text-sm text-blue-700 space-y-1">
+          <li>• Keep it professional and introduce yourself</li>
+          <li>• Good lighting and clear audio recommended</li>
+          <li>• 30-60 seconds is ideal</li>
+          <li>• Videos are reviewed before being published</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// Email verification banner component
+function EmailVerificationBanner({
+  email,
+  onSuccess,
+  onError
+}: {
+  email: string;
+  onSuccess: () => void;
+  onError: (msg: string) => void;
+}) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function handleResend() {
+    setSending(true);
+    try {
+      const res = await apiClient.post('/auth/resend-verification');
+      if (res.data.success) {
+        setSent(true);
+        onSuccess();
+      } else {
+        onError(res.data.message);
+      }
+    } catch {
+      onError('Failed to send verification email. Please try again later.');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
+      <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <p className="font-medium text-yellow-800">Email not verified</p>
+        <p className="text-sm text-yellow-700 mt-1">
+          Please verify your email address ({email}) to access all features.
+        </p>
+        {!sent ? (
+          <button
+            onClick={handleResend}
+            disabled={sending}
+            className="mt-2 text-sm font-medium text-yellow-800 hover:text-yellow-900 underline disabled:opacity-50"
+          >
+            {sending ? 'Sending...' : 'Resend verification email'}
+          </button>
+        ) : (
+          <p className="mt-2 text-sm text-green-600 font-medium">
+            ✓ Verification email sent! Check your inbox.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 type Tab = 'profile' | 'notifications' | 'security' | 'video';
 
@@ -280,11 +598,10 @@ export default function SettingsPage() {
                   aria-controls={`panel-${tab.id}`}
                   tabIndex={activeTab === tab.id ? 0 : -1}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition ${
-                    activeTab === tab.id
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition ${activeTab === tab.id
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                    }`}
                 >
                   <tab.icon className="w-5 h-5" aria-hidden="true" />
                   {tab.label}
@@ -302,6 +619,15 @@ export default function SettingsPage() {
           >
             {activeTab === 'profile' && (
               <div className="space-y-6">
+                {/* Email Verification Banner */}
+                {user && !user.email_verified && (
+                  <EmailVerificationBanner
+                    email={user.email}
+                    onSuccess={() => setSuccess('Verification email sent! Please check your inbox.')}
+                    onError={(msg) => setError(msg)}
+                  />
+                )}
+
                 {/* Avatar */}
                 <div className="flex items-center gap-6">
                   <div className="relative">
@@ -614,25 +940,10 @@ export default function SettingsPage() {
             )}
 
             {activeTab === 'video' && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-medium text-gray-900">Pre-recorded Video</h3>
-                <p className="text-gray-500">
-                  Upload a short video that plays on your grid card when you&apos;re busy or away.
-                  This helps borrowers get to know you before you&apos;re available.
-                </p>
-
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
-                  <Video className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-2">Drag and drop a video file here, or</p>
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    <Upload className="w-4 h-4 inline mr-2" />
-                    Upload Video
-                  </button>
-                  <p className="text-xs text-gray-400 mt-4">
-                    MP4, WebM, or MOV. Maximum 100MB, 60 seconds.
-                  </p>
-                </div>
-              </div>
+              <VideoUploadSection
+                onSuccess={() => setSuccess('Video uploaded successfully! It will be reviewed before appearing on your profile.')}
+                onError={(msg) => setError(msg)}
+              />
             )}
           </div>
         </div>

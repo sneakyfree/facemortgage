@@ -22,8 +22,8 @@ import { useEffect, useRef, useCallback, RefObject } from 'react';
  */
 export function useFocusTrap<T extends HTMLElement = HTMLDivElement>(
   isActive: boolean
-): RefObject<T> {
-  const containerRef = useRef<T>(null);
+): RefObject<T | null> {
+  const containerRef = useRef<T | null>(null);
   const previousActiveElement = useRef<Element | null>(null);
 
   // Get all focusable elements within the container
