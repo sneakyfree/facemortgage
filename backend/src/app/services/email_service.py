@@ -352,23 +352,36 @@ class EmailService:
         to_email: str,
         template_name: str,
         context: Dict[str, Any],
+        max_retries: int = 3,
     ) -> bool:
         """
-        Send a templated email.
+        Send a templated email with automatic retry for transient failures.
 
         Args:
             to_email: Recipient email address
             template_name: Name of the template to use
             context: Variables to substitute in the template
+            max_retries: Maximum retry attempts for transient failures (429, 5xx)
 
         Returns:
             True if sent successfully, False otherwise
         """
         if not self.client:
-            logger.warning(f"Email not sent (no client): {template_name} to {to_email}")
+            env = settings.environment
+            if env == "production":
+                logger.error(
+                    f"CRITICAL: Email not sent in PRODUCTION (SendGrid unconfigured): "
+                    f"{template_name} to {to_email}. Set SENDGRID_API_KEY to enable email delivery."
+                )
+            else:
+                logger.warning(
+                    f"Email not sent (no SendGrid client): {template_name} to {to_email}. "
+                    f"Set SENDGRID_API_KEY in .env to enable email delivery."
+                )
             return False
 
         try:
+            import asyncio
             from sendgrid.helpers.mail import Mail
 
             subject, html_content = self._render_template(template_name, context)
@@ -380,15 +393,54 @@ class EmailService:
                 html_content=html_content,
             )
 
-            response = self.client.send(message)
-            success = response.status_code in (200, 201, 202)
+            # Retry loop for transient failures
+            last_error = None
+            for attempt in range(max_retries):
+                try:
+                    response = self.client.send(message)
+                    success = response.status_code in (200, 201, 202)
 
-            if success:
-                logger.info(f"Email sent: {template_name} to {to_email}")
-            else:
-                logger.error(f"Email failed: {template_name} to {to_email}, status={response.status_code}")
+                    if success:
+                        logger.info(
+                            f"Email sent: {template_name} to {to_email}"
+                            + (f" (attempt {attempt + 1})" if attempt > 0 else "")
+                        )
+                        return True
 
-            return success
+                    # Transient failure — retry
+                    if response.status_code in (429, 500, 502, 503, 504):
+                        wait_time = (2 ** attempt) * 0.5  # 0.5s, 1s, 2s
+                        logger.warning(
+                            f"Email transient failure (attempt {attempt + 1}/{max_retries}): "
+                            f"{template_name} to {to_email}, status={response.status_code}. "
+                            f"Retrying in {wait_time}s..."
+                        )
+                        await asyncio.sleep(wait_time)
+                        continue
+
+                    # Permanent failure — don't retry
+                    logger.error(
+                        f"Email permanent failure: {template_name} to {to_email}, "
+                        f"status={response.status_code}, body={response.body}"
+                    )
+                    return False
+
+                except Exception as e:
+                    last_error = e
+                    if attempt < max_retries - 1:
+                        wait_time = (2 ** attempt) * 0.5
+                        logger.warning(
+                            f"Email send exception (attempt {attempt + 1}/{max_retries}): "
+                            f"{template_name} to {to_email}: {e}. Retrying in {wait_time}s..."
+                        )
+                        await asyncio.sleep(wait_time)
+                    else:
+                        logger.error(
+                            f"Email send failed after {max_retries} attempts: "
+                            f"{template_name} to {to_email}: {e}"
+                        )
+
+            return False
 
         except Exception as e:
             logger.error(f"Email send error: {template_name} to {to_email}: {e}")

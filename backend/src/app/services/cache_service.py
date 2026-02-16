@@ -60,15 +60,38 @@ class CacheService:
         self._connected = False
     
     async def connect(self) -> None:
-        """Initialize Redis connection."""
+        """Initialize Redis connection with retry and graceful degradation."""
         if self._client is None:
-            self._client = redis.from_url(
-                self.redis_url,
-                encoding="utf-8",
-                decode_responses=True,
-            )
-            self._connected = True
-            logger.info("Cache service connected")
+            import asyncio
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    self._client = redis.from_url(
+                        self.redis_url,
+                        encoding="utf-8",
+                        decode_responses=True,
+                    )
+                    # Verify connection is alive
+                    await self._client.ping()
+                    self._connected = True
+                    logger.info("Cache service connected to Redis")
+                    return
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        wait_time = (2 ** attempt) * 0.5
+                        logger.warning(
+                            f"Redis connection attempt {attempt + 1}/{max_retries} failed: {e}. "
+                            f"Retrying in {wait_time}s..."
+                        )
+                        await asyncio.sleep(wait_time)
+                        self._client = None
+                    else:
+                        logger.error(
+                            f"Redis connection failed after {max_retries} attempts: {e}. "
+                            f"Cache operations will be no-ops (graceful degradation)."
+                        )
+                        self._client = None
+                        self._connected = False
     
     async def disconnect(self) -> None:
         """Close Redis connection."""

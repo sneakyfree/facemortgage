@@ -11,7 +11,7 @@ import string
 from src.app.core.auth import get_current_user
 from src.app.models.user import User
 from src.app.core.database import get_db
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/users/me", tags=["sms"])
 
@@ -57,13 +57,13 @@ async def get_sms_preferences(
 async def update_sms_preferences(
     body: SMSPreferencesUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Update SMS notification preferences."""
     # Update user preferences
     if hasattr(current_user, 'sms_preferences'):
         current_user.sms_preferences = body.preferences
-    db.commit()
+    await db.commit()
     
     return {"status": "updated", "preferences": body.preferences}
 
@@ -72,7 +72,7 @@ async def update_sms_preferences(
 async def send_sms_verification(
     body: PhoneVerificationRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Send SMS verification code to phone number."""
     # Validate phone number (basic validation)
@@ -96,7 +96,7 @@ async def send_sms_verification(
     if hasattr(current_user, 'phone'):
         current_user.phone = phone
         current_user.phone_verified = False
-        db.commit()
+        await db.commit()
     
     # Send SMS via Twilio
     from src.app.config import settings
@@ -128,7 +128,7 @@ async def send_sms_verification(
 async def verify_sms_code(
     body: CodeVerificationRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Verify SMS code and mark phone as verified."""
     user_id = str(current_user.id)
@@ -152,7 +152,7 @@ async def verify_sms_code(
     # Mark phone as verified
     if hasattr(current_user, 'phone_verified'):
         current_user.phone_verified = True
-        db.commit()
+        await db.commit()
     
     # Clean up
     del verification_codes[user_id]

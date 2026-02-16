@@ -259,6 +259,13 @@ class SignalingService:
                 "username": settings.turn_server_username,
                 "credential": settings.turn_server_credential,
             })
+            logger.debug(f"ICE servers include TURN: {settings.turn_server_url}")
+        else:
+            logger.warning(
+                "TURN server not configured — video calls will fail behind NAT/firewalls. "
+                "Set TURN_SERVER_URL, TURN_SERVER_USERNAME, and TURN_SERVER_CREDENTIAL in .env. "
+                "Obtain credentials from Twilio, Xirsys, or Metered.ca."
+            )
 
         return servers
 
