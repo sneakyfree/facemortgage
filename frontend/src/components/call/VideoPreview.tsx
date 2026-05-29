@@ -26,6 +26,7 @@ export function VideoPreview({
     const [isMuted, setIsMuted] = useState(true);
     const [progress, setProgress] = useState(0);
     const [duration, setDuration] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
     const [showControls, setShowControls] = useState(true);
     const [hasEnded, setHasEnded] = useState(false);
 
@@ -35,6 +36,7 @@ export function VideoPreview({
 
         const handleTimeUpdate = () => {
             setProgress((video.currentTime / video.duration) * 100);
+            setCurrentTime(video.currentTime);
         };
 
         const handleLoadedMetadata = () => {
@@ -203,7 +205,7 @@ export function VideoPreview({
                             {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                         </button>
                         <span className="text-sm text-white/80">
-                            {formatTime(videoRef.current?.currentTime || 0)} / {formatTime(duration)}
+                            {formatTime(currentTime)} / {formatTime(duration)}
                         </span>
                     </div>
                     <button
