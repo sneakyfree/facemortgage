@@ -1,20 +1,21 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 import re
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
-from src.app.core.dependencies import DbSession, CurrentUser, CurrentProfessional, CurrentUserOptional
+from src.app.core.dependencies import DbSession, CurrentProfessional, CurrentUserOptional
 from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.user import User
 from src.app.models.professional import (
     ProfessionalProfile,
     ProfessionalStatus,
-    Specialty,
-    Language,
-    County,
     ProfessionalSpecialty,
     ProfessionalLanguage,
     ProfessionalServiceArea,

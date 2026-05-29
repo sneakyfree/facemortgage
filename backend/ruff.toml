@@ -1,0 +1,10 @@
+target-version = "py311"
+line-length = 120
+
+[lint]
+ignore = [
+    "E711",  # == None intentional in SQLAlchemy filters (-> IS NULL)
+    "E712",  # == True/False intentional in SQLAlchemy filters (-> = true)
+    "E741",  # ambiguous var names (l/I/O) — pre-existing, stylistic only
+    "E402",  # module import not at top — deliberate to avoid circular imports
+]

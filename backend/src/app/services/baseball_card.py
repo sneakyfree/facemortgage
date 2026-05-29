@@ -7,11 +7,10 @@ aggregating verified data from NMLS and internal metrics.
 
 import logging
 from datetime import datetime
-from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.models.professional import ProfessionalProfile

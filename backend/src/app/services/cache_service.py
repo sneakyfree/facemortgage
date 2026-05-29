@@ -14,12 +14,10 @@ cache keys include version hashes for consistency.
 import json
 import hashlib
 import logging
-from datetime import timedelta
 from typing import Optional, TypeVar, Callable, Any
 from functools import wraps
 
 import redis.asyncio as redis
-from pydantic import BaseModel
 
 from src.app.config import settings
 

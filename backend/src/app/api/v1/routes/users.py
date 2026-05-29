@@ -2,7 +2,6 @@ import uuid
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, UploadFile, File, status, Request
 from pydantic import BaseModel
-from typing import Optional
 
 from src.app.core.dependencies import DbSession, CurrentUser
 from src.app.core.rate_limit import limiter, RATE_LIMITS
@@ -198,7 +197,7 @@ async def upload_avatar(
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid file type. Allowed: JPEG, PNG, GIF, WebP",
+            detail="Invalid file type. Allowed: JPEG, PNG, GIF, WebP",
         )
 
     # Read file content

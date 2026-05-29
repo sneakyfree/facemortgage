@@ -9,7 +9,6 @@ Handles:
 """
 import io
 import csv
-import json
 import logging
 from datetime import datetime
 from typing import Optional, List
@@ -17,7 +16,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request, status, UploadFile, File
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 

@@ -9,18 +9,16 @@ Provides:
 """
 import logging
 from datetime import datetime, timedelta, date
-from decimal import Decimal
 from typing import Optional, Dict, Any, List
 from uuid import UUID
 
-from sqlalchemy import select, func, and_, case
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.models.call import VideoCall, CallStatus
 from src.app.models.lead import Lead, LeadStatus
 from src.app.models.analytics import GridImpression, GridClick
-from src.app.models.billing import Subscription, BidWallet, BillingTransaction
-from src.app.models.professional import ProfessionalProfile
+from src.app.models.billing import Subscription, BillingTransaction
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +44,6 @@ class AnalyticsService:
             Dictionary with calls, leads, and grid performance stats
         """
         start_date = datetime.utcnow() - timedelta(days=days)
-        prof_id_str = str(professional_id)
 
         # Call statistics
         call_stats = await self._get_call_stats(db, professional_id, start_date)

@@ -8,11 +8,9 @@ Requires FFmpeg to be installed on the system.
 import asyncio
 import os
 import shutil
-import tempfile
 import logging
 from pathlib import Path
 from typing import Optional
-import subprocess
 
 logger = logging.getLogger(__name__)
 

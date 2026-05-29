@@ -5,7 +5,7 @@ Handles recording and querying time-series metrics from the
 dedicated TimescaleDB instance.
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 

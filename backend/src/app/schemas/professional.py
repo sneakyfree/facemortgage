@@ -1,8 +1,7 @@
 from datetime import datetime
-from decimal import Decimal
 from typing import Optional, List
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from src.app.models.professional import ProfessionalStatus, SubscriptionTier
 from src.app.models.user import UserType

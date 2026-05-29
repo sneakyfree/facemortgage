@@ -14,7 +14,6 @@ from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
 from src.app.signaling.service import (
-    SignalingService,
     get_signaling_service,
     CallState,
 )

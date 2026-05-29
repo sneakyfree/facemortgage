@@ -9,10 +9,8 @@ Provides Phase 3 monetization features:
 
 import logging
 from typing import Optional
-from uuid import UUID
 
 from fastapi import APIRouter, Request, Query, HTTPException, status
-from pydantic import BaseModel
 
 from src.app.core.dependencies import DbSession, CurrentProfessional
 from src.app.core.rate_limit import limiter, RATE_LIMITS

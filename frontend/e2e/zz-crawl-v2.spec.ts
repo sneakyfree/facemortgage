@@ -119,7 +119,7 @@ async function probeLinks(page: Page, report: PageReport) {
   const seen = new Set<string>();
   for (let i = 0; i < count; i++) {
     const a = links.nth(i);
-    let href = (await a.getAttribute("href").catch(() => "")) || "";
+    const href = (await a.getAttribute("href").catch(() => "")) || "";
     if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("javascript:")) continue;
     let absolute: string;
     try { absolute = new URL(href, page.url()).toString(); } catch { continue; }

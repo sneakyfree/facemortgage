@@ -10,7 +10,6 @@ Handles transactional emails for:
 """
 import logging
 from typing import Optional, Dict, Any
-from datetime import datetime
 
 from src.app.config import settings
 
@@ -394,7 +393,6 @@ class EmailService:
             )
 
             # Retry loop for transient failures
-            last_error = None
             for attempt in range(max_retries):
                 try:
                     response = self.client.send(message)
@@ -426,7 +424,6 @@ class EmailService:
                     return False
 
                 except Exception as e:
-                    last_error = e
                     if attempt < max_retries - 1:
                         wait_time = (2 ** attempt) * 0.5
                         logger.warning(

@@ -6,7 +6,7 @@ from datetime import datetime, date, timedelta
 from typing import Optional
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import select, func, and_, extract, case
+from sqlalchemy import select, func, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.core.auth import get_current_user
@@ -18,7 +18,7 @@ from src.app.models.call import VideoCall, CallStatus
 from src.app.models.review import Review
 from src.app.models.lead import Lead, LeadStatus
 from src.app.models.billing import Subscription, BidWallet, BidTransaction
-from src.app.models.analytics import GridImpression, GridClick
+from src.app.models.analytics import GridImpression
 from src.app.schemas.analytics import (
     AnalyticsDashboard,
     PerformanceMetrics,
@@ -27,8 +27,6 @@ from src.app.schemas.analytics import (
     LeadAnalytics,
     BillingAnalytics,
     GridAnalytics,
-    PeerComparison,
-    ComparisonMetrics,
     TimeSeriesPoint,
 )
 
@@ -152,7 +150,7 @@ async def get_recent_activity(
         activities.append(RecentActivityItem(
             id=str(call.id),
             type="call",
-            title=f"Video call" + (f" - {call.duration_seconds}s" if call.duration_seconds else ""),
+            title="Video call" + (f" - {call.duration_seconds}s" if call.duration_seconds else ""),
             description=f"Status: {call.status.value if call.status else 'unknown'}",
             time=_format_relative_time(call.initiated_at),
             created_at=call.initiated_at,
@@ -169,7 +167,7 @@ async def get_recent_activity(
         activities.append(RecentActivityItem(
             id=str(lead.id),
             type="lead",
-            title=f"New lead" + (f" - {lead.contact_name}" if lead.contact_name else ""),
+            title="New lead" + (f" - {lead.contact_name}" if lead.contact_name else ""),
             description=f"Status: {lead.lead_status.value if lead.lead_status else 'new'}",
             time=_format_relative_time(lead.created_at),
             created_at=lead.created_at,
@@ -592,7 +590,6 @@ async def _get_grid_analytics(
     )
     today_stats = today_result.one()
     impressions_today = today_stats.impressions or 0
-    clicks_today = today_stats.clicks or 0
     avg_position_today = float(today_stats.avg_position) if today_stats.avg_position else None
 
     # Get this week's stats

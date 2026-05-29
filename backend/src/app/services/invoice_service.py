@@ -176,7 +176,6 @@ class UsageAnalyticsService:
         Get comprehensive usage statistics for a professional.
         """
         from sqlalchemy import select, func
-        from datetime import timedelta
         from src.app.models.professional import ProfessionalProfile
         from src.app.models.call import VideoCall
         from src.app.models.lead import Lead

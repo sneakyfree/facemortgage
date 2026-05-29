@@ -1,7 +1,7 @@
 """
 Pydantic schemas for professional analytics.
 """
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from typing import Optional, List
 from pydantic import BaseModel

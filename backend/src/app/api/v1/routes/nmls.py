@@ -17,7 +17,7 @@ from sqlalchemy import select
 from src.app.core.dependencies import DbSession, CurrentProfessional, CurrentAdmin
 from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.professional import ProfessionalProfile
-from src.app.services.nmls_service import verify_professional_nmls, NMLSVerificationResult
+from src.app.services.nmls_service import verify_professional_nmls
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

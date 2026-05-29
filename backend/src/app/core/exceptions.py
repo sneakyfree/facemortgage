@@ -4,7 +4,7 @@ Custom exceptions and error handling for the application.
 Provides standardized error responses across all endpoints.
 """
 from typing import Optional, Dict, Any
-from fastapi import HTTPException, Request, status
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException

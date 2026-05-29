@@ -200,7 +200,7 @@ def setup_logging() -> None:
     # Log startup message
     logger = logging.getLogger(__name__)
     logger.info(
-        f"Logging configured",
+        "Logging configured",
         extra={
             "log_level": log_level_name,
             "environment": environment,

@@ -7,11 +7,13 @@ Handles:
 - ICE candidate exchange
 - Call state management
 """
+import logging
+
+logger = logging.getLogger(__name__)
 import json
-import asyncio
 from datetime import datetime
-from typing import Optional, Dict, Set, Any
-from uuid import UUID, uuid4
+from typing import Optional
+from uuid import uuid4
 from dataclasses import dataclass, field
 from enum import Enum
 

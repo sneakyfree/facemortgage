@@ -7,7 +7,7 @@ matched with a professional for follow-up.
 import uuid
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import String, DateTime, ForeignKey, Text, Enum as SQLEnum, Integer
+from sqlalchemy import String, DateTime, ForeignKey, Enum as SQLEnum, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 

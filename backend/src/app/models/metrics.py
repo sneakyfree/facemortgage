@@ -5,12 +5,10 @@ Hypertables for efficient time-series data storage and querying.
 These models are stored in a separate TimescaleDB database optimized
 for time-series analytics.
 """
-from datetime import datetime
-from typing import Optional
-from uuid import UUID, uuid4
+from uuid import uuid4
 from sqlalchemy import (
     Column, String, Integer, Float, DateTime, Boolean, 
-    ForeignKey, Index, text
+    Index, text
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import declarative_base

@@ -7,11 +7,10 @@ import json
 from datetime import timedelta
 from typing import List, Dict, Any, Optional
 from uuid import UUID
-from dataclasses import asdict
 
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import selectinload
 
 from src.app.core.cache import CacheService, get_redis
 from src.app.models.professional import (

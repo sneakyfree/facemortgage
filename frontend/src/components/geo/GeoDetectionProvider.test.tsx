@@ -19,7 +19,7 @@ let mockLocation: {
 let mockIsLoading = false;
 let mockError: string | null = null;
 let mockIsPermissionDenied = false;
-let mockFiltersState = { state_code: null };
+let mockFiltersState: { state_code: string | null } = { state_code: null };
 
 vi.mock('@/hooks/useGeoLocation', () => ({
   useGeoLocation: () => ({

@@ -183,7 +183,7 @@ class VideoService:
                         f"Content type mismatch for {file.filename}. "
                         f"Claimed: {file.content_type}, Detected: {detected_type}"
                     )
-                    return False, f"File content does not match claimed type"
+                    return False, "File content does not match claimed type"
 
         return True, ""
 

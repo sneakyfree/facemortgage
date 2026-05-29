@@ -4,6 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import VideoCallModal from './VideoCallModal';
+import type { CallState } from '@/hooks/useVideoCall';
 
 // Mock the useVideoCall hook
 const mockInitiateCall = vi.fn();
@@ -12,7 +13,7 @@ const mockToggleMute = vi.fn();
 const mockToggleCamera = vi.fn();
 
 const defaultHookReturn = {
-  callState: 'idle' as const,
+  callState: 'idle' as CallState,
   callInfo: null as { roomId: string; isCaller: boolean } | null,
   localStream: null as MediaStream | null,
   remoteStream: null as MediaStream | null,

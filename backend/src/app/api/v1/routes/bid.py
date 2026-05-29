@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -240,7 +240,7 @@ async def confirm_deposit(
             wallet_id=wallet.id,
             amount=amount,
             transaction_type="deposit",
-            description=f"Deposit via Stripe",
+            description="Deposit via Stripe",
             stripe_payment_intent_id=payment_intent_id,
         )
         db.add(transaction)

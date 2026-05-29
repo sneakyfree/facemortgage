@@ -9,8 +9,7 @@ Manages professional availability status with:
 import json
 import asyncio
 from datetime import datetime
-from typing import Optional, List, Dict, Any
-from uuid import UUID
+from typing import Optional, List, Dict
 
 import redis.asyncio as redis
 

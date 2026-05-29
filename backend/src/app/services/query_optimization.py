@@ -22,7 +22,6 @@ from src.app.models.professional import (
     ProfessionalSpecialty,
     ProfessionalLanguage,
 )
-from src.app.models.user import User
 
 logger = logging.getLogger(__name__)
 

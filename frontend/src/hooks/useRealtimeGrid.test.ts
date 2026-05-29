@@ -506,7 +506,7 @@ describe('useRealtimeGrid', () => {
   });
 
   it('logs reconnection attempt on close', async () => {
-    mockLogger.log.mockClear();
+    vi.mocked(mockLogger.log).mockClear();
 
     renderHook(() => useRealtimeGrid({ enabled: true }));
 
@@ -523,8 +523,8 @@ describe('useRealtimeGrid', () => {
     });
 
     // Should log reconnection attempt - the format is a single string
-    const reconnectLogs = mockLogger.log.mock.calls.filter(
-      (call) => typeof call[0] === 'string' && call[0].includes('Reconnecting in')
+    const reconnectLogs = vi.mocked(mockLogger.log).mock.calls.filter(
+      (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('Reconnecting in')
     );
     expect(reconnectLogs.length).toBeGreaterThan(0);
   });

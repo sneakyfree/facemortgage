@@ -10,7 +10,6 @@ from sqlalchemy.orm import selectinload
 from src.app.core.database import get_db
 from src.app.core.security import decode_token
 from src.app.models.user import User, UserType
-from src.app.models.professional import ProfessionalProfile
 
 logger = logging.getLogger(__name__)
 
@@ -246,7 +245,6 @@ async def require_borrower(
         raise credentials_exception
 
     # Eager-load borrower_profile
-    from src.app.models.borrower import BorrowerProfile
     result = await db.execute(
         select(User)
         .options(selectinload(User.borrower_profile))

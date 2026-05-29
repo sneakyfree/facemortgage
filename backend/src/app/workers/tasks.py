@@ -736,10 +736,10 @@ def aggregate_grid_positions_task() -> bool:
 async def _aggregate_grid_positions_async() -> bool:
     """Async implementation of grid position aggregation."""
     from datetime import date
-    from sqlalchemy import select, func, update
+    from sqlalchemy import select, func
     from sqlalchemy.dialects.postgresql import insert
     from src.app.core.database import async_session_maker
-    from src.app.models.analytics import GridImpression, GridClick
+    from src.app.models.analytics import GridImpression
     from src.app.models.professional import ProfessionalProfile
 
     async with async_session_maker() as db:

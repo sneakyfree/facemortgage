@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-import uuid
 from fastapi import APIRouter, HTTPException, status, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -18,7 +17,7 @@ from src.app.core.security import (
     decode_token,
 )
 from src.app.core.rate_limit import limiter, RATE_LIMITS
-from src.app.models.user import User, UserType
+from src.app.models.user import User
 from src.app.models.professional import ProfessionalProfile
 from src.app.models.borrower import BorrowerProfile
 from src.app.schemas.user import (

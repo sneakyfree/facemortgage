@@ -11,8 +11,8 @@ import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional, TypeVar
 
@@ -339,7 +339,7 @@ class DataProviderHttpClient:
                 last_exception = e
                 self._handle_retry_exception(method, path, e, attempt, "network error")
 
-            except httpx.HTTPStatusError as e:
+            except httpx.HTTPStatusError:
                 # Non-retryable HTTP errors
                 self.circuit_breaker.record_failure()
                 raise

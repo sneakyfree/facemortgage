@@ -10,13 +10,12 @@ from datetime import datetime, date, timedelta
 from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, status, Request, Query
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_
 from sqlalchemy.orm import selectinload
 
 from src.app.core.dependencies import DbSession, CurrentUser, CurrentAdmin
 from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.dispute import Dispute, DisputeMessage, DisputeStatus, DisputePriority
-from src.app.models.user import User
 from src.app.schemas.dispute import (
     CreateDisputeRequest,
     AddMessageRequest,

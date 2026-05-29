@@ -3,7 +3,6 @@ Video upload and serving routes.
 
 Handles pre-recorded video uploads for professional profiles.
 """
-from uuid import UUID
 from fastapi import APIRouter, HTTPException, UploadFile, File, status, Request
 from fastapi.responses import FileResponse
 from sqlalchemy import select

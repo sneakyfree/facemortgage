@@ -1,17 +1,15 @@
 import asyncio
 import logging
 import uuid
-from fastapi import FastAPI, WebSocket, WebSocketException, Depends, Query, status, Request
+from fastapi import FastAPI, WebSocket, status, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from contextlib import asynccontextmanager
 from typing import Optional
 
 from src.app.config import settings
 from src.app.core.logging import setup_logging
-from src.app.core.rate_limit import limiter, rate_limit_exceeded_handler, RATE_LIMITS
-from slowapi import _rate_limit_exceeded_handler
+from src.app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from src.app.api.v1.router import api_router
 from src.app.api.v1.routes import health
@@ -85,7 +83,7 @@ def init_sentry() -> None:
             )
         except Exception as e:
             logging.getLogger(__name__).error(f"Failed to initialize Sentry: {e}")
-from src.app.core.database import engine, Base, async_session_maker
+from src.app.core.database import engine, async_session_maker
 from src.app.core.dependencies import get_current_user_ws
 from src.app.presence import (
     get_presence_service,

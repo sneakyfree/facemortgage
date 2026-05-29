@@ -4,7 +4,7 @@ Audit Log API routes.
 Provides admin endpoints for viewing system audit logs.
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 from fastapi import APIRouter, Query

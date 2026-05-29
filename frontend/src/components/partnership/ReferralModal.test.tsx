@@ -23,13 +23,11 @@ vi.mock('@/hooks/useFocusTrap', () => ({
 describe('ReferralModal', () => {
   const mockPartnership: PartnershipDetail = {
     id: 'partnership-123',
-    loan_officer_id: 'lo-456',
     loan_officer_name: 'John Smith',
-    loan_officer_email: 'john@example.com',
-    realtor_id: 'realtor-789',
     realtor_name: 'Jane Doe',
     realtor_email: 'jane@example.com',
     status: 'active',
+    tier: 'gold',
     referral_count: 5,
     created_at: '2024-01-01T00:00:00Z',
   };

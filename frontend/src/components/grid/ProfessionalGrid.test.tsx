@@ -38,8 +38,8 @@ vi.mock('@/hooks/useRealtimeGrid', () => ({
     onProfessionalOnline?: () => void;
     onProfessionalOffline?: (id: string) => void;
   }) => {
-    mockOnProfessionalOnline.mockImplementation(options.onProfessionalOnline);
-    mockOnProfessionalOffline.mockImplementation(options.onProfessionalOffline);
+    mockOnProfessionalOnline.mockImplementation(options.onProfessionalOnline ?? (() => {}));
+    mockOnProfessionalOffline.mockImplementation(options.onProfessionalOffline ?? (() => {}));
     return {};
   },
 }));
@@ -114,19 +114,18 @@ Object.defineProperty(window, 'sessionStorage', {
   writable: true,
 });
 
-const createTestProfessional = (id: string, firstName: string, lastName: string): ProfessionalGridItem => ({
+const createTestProfessional = (id: string, firstName: string, lastName: string) => ({
   id,
   first_name: firstName,
   last_name: lastName,
   user_type: 'loan_officer',
   nmls_id: '123456',
   company_name: 'Test Company',
-  city: 'Test City',
   state_code: 'CA',
   is_available: true,
   grid_position: 1,
   languages: ['en'],
-});
+} as unknown as ProfessionalGridItem);
 
 const createWrapper = () => {
   const queryClient = new QueryClient({

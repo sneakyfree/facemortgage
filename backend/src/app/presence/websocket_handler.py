@@ -15,14 +15,11 @@ import asyncio
 import logging
 import time
 from collections import defaultdict
-from typing import Dict, Set, Optional, List
-from uuid import UUID
-from fastapi import WebSocket, WebSocketDisconnect, HTTPException, status
+from typing import Dict, Set, List
+from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
-from src.app.presence.service import get_presence_service, PresenceService
-from src.app.core.dependencies import get_current_user_ws
-from src.app.models.user import UserType
+from src.app.presence.service import get_presence_service
 
 logger = logging.getLogger(__name__)
 
@@ -525,7 +522,7 @@ async def redis_subscriber_task():
     presence = get_presence_service()
     await presence.connect()
 
-    pubsub = await presence.subscribe("presence", "grid_updates")
+    await presence.subscribe("presence", "grid_updates")
 
     while True:
         try:

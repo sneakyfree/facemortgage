@@ -87,7 +87,6 @@ async def track_impressions(
         return TrackingResponse(success=True, tracked_count=0, message="No impressions to track")
 
     today = date.today()
-    session_id = request_data.session_id or x_session_id
 
     try:
         # Group impressions by professional_id for aggregation

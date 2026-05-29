@@ -19,22 +19,17 @@ The engine is designed to be:
 import logging
 import uuid
 from datetime import datetime
-from decimal import Decimal
 from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, Field
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.app.models.professional import (
     ProfessionalProfile,
     ProfessionalStatus,
-    ProfessionalSpecialty,
-    ProfessionalLanguage,
-    ProfessionalServiceArea,
 )
-from src.app.models.user import User
 
 logger = logging.getLogger(__name__)
 

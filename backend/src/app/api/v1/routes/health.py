@@ -29,7 +29,7 @@ async def _measure_latency(coro) -> tuple[Any, float]:
         result = await coro
         latency_ms = (time.perf_counter() - start) * 1000
         return result, latency_ms
-    except Exception as e:
+    except Exception:
         latency_ms = (time.perf_counter() - start) * 1000
         raise
 

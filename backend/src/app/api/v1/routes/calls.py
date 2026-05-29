@@ -20,8 +20,7 @@ from sqlalchemy.orm import selectinload
 from src.app.core.dependencies import DbSession, CurrentUser, CurrentUserOptional
 from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.config import settings
-from src.app.models.user import User
-from src.app.models.professional import ProfessionalProfile, ProfessionalStatus
+from src.app.models.professional import ProfessionalProfile
 from src.app.models.call import VideoCall, CallStatus
 from src.app.models.review import Review
 from src.app.models.lead import Lead, LeadActivity, LeadStatus

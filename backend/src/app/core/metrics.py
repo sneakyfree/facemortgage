@@ -5,7 +5,6 @@ Provides custom business metrics and integrates with prometheus-fastapi-instrume
 for automatic HTTP metrics collection.
 """
 import logging
-from typing import Callable
 
 from fastapi import FastAPI
 
@@ -57,37 +56,37 @@ def setup_metrics(app: FastAPI) -> None:
         from prometheus_client import Counter, Gauge, Histogram
 
         # Create custom metrics
-        ACTIVE_CALLS = Gauge(
+        Gauge(
             "facemortgage_active_calls_total",
             "Number of currently active video calls",
         )
 
-        LEAD_CAPTURES = Counter(
+        Counter(
             "facemortgage_lead_captures_total",
             "Total number of leads captured",
             ["professional_type"],
         )
 
-        SUCCESSFUL_MATCHES = Counter(
+        Counter(
             "facemortgage_successful_matches_total",
             "Total number of successful borrower-professional matches",
         )
 
-        DATA_PROVIDER_LATENCY = Histogram(
+        Histogram(
             "facemortgage_data_provider_latency_seconds",
             "Latency of data provider API calls",
             ["provider", "operation"],
             buckets=[0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
         )
 
-        STRIPE_WEBHOOK_DURATION = Histogram(
+        Histogram(
             "facemortgage_stripe_webhook_duration_seconds",
             "Duration of Stripe webhook processing",
             ["event_type"],
             buckets=[0.05, 0.1, 0.25, 0.5, 1.0, 2.5],
         )
 
-        CACHE_OPERATIONS = Counter(
+        Counter(
             "facemortgage_cache_operations_total",
             "Total cache operations",
             ["operation", "result"],  # operation: get/set, result: hit/miss/error
@@ -145,8 +144,8 @@ def record_lead_capture(professional_type: str) -> None:
     """Record a lead capture event."""
     increment_metric("lead_captures_total")
     try:
-        from prometheus_client import Counter
-        # If prometheus_client is available, also record with labels
+        # prometheus_client metrics are recorded via increment_metric
+        pass
     except ImportError:
         pass
 

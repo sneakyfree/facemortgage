@@ -8,11 +8,10 @@ Tracks and calculates call pickup metrics for professionals with:
 """
 
 import logging
-from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.app.models.professional import ProfessionalProfile
@@ -218,8 +217,6 @@ class AdvancedFilterService:
         from src.app.models.professional import (
             ProfessionalProfile,
             ProfessionalStatus,
-            ProfessionalSpecialty,
-            ProfessionalLanguage,
         )
         from sqlalchemy.orm import selectinload
         from sqlalchemy import and_, or_

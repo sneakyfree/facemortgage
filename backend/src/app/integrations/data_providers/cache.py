@@ -11,10 +11,10 @@ import asyncio
 import json
 import logging
 from dataclasses import asdict, is_dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Callable, Dict, Generic, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, Generic, Optional, TypeVar
 
 from redis.asyncio import Redis
 from redis.exceptions import RedisError

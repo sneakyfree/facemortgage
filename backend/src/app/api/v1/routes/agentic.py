@@ -11,21 +11,18 @@ Provides Phase 4 AI-powered features:
 import logging
 from datetime import datetime
 from typing import Optional
-from uuid import UUID
 
-from fastapi import APIRouter, Request, HTTPException, status
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
-from src.app.core.dependencies import DbSession, CurrentUser, CurrentProfessional
+from src.app.core.dependencies import DbSession, CurrentProfessional
 from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.services.agentic_intelligence import (
     IntentClassifier,
     IntentClassification,
     BorrowerIntent,
     SmartRecommender,
-    SmartRecommendation,
     FollowUpSuggester,
-    FollowUpSuggestion,
     ConversationSummarizer,
     ConversationSummary,
 )

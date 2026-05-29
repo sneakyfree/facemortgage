@@ -4,7 +4,6 @@ SMS notification settings and phone verification endpoints.
 
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import Optional
 import random
 import string
 

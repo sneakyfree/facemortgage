@@ -94,7 +94,7 @@ function setupBrowserMocks(options: {
     });
   } else {
     // Delete the property entirely so 'serviceWorker' in navigator returns false
-    // @ts-expect-error - Deleting for test purposes
+    // @ts-expect-error - navigator.serviceWorker is read-only; deleting for test
     delete navigator.serviceWorker;
   }
 
@@ -108,7 +108,6 @@ function setupBrowserMocks(options: {
     });
   } else {
     // Delete the property entirely so 'PushManager' in window returns false
-    // @ts-expect-error - Deleting for test purposes
     delete (window as { PushManager?: unknown }).PushManager;
   }
 
@@ -125,7 +124,6 @@ function setupBrowserMocks(options: {
     });
   } else {
     // Delete the property entirely so 'Notification' in window returns false
-    // @ts-expect-error - Deleting for test purposes
     delete (window as { Notification?: unknown }).Notification;
   }
 

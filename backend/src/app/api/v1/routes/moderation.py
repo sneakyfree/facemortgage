@@ -9,7 +9,6 @@ Admins can:
 """
 import logging
 from datetime import datetime, date, timedelta
-from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, status, Request, Query
 from sqlalchemy import select, func, and_

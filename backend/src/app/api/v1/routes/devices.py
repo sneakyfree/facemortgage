@@ -8,7 +8,6 @@ from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 
 from src.app.core.dependencies import DbSession, CurrentUser
 from src.app.core.rate_limit import limiter, RATE_LIMITS
