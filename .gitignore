@@ -80,3 +80,8 @@ media/
 *.pem
 *.key
 secrets/
+
+# Playwright artifacts (should never be committed)
+frontend/test-results/
+test-results/
+playwright-report/
