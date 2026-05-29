@@ -85,3 +85,7 @@ secrets/
 frontend/test-results/
 test-results/
 playwright-report/
+
+# The Python-venv `lib/` rule above must NOT swallow the Next app source lib dir:
+!frontend/src/lib/
+!frontend/src/lib/**
