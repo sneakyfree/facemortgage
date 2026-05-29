@@ -333,7 +333,7 @@ async def resend_verification_email(request: Request, current_user: CurrentUser,
     sent = await email_service.send_email(
         to_email=user.email,
         template_name="email_verification",
-        template_data={
+        context={
             "name": user.first_name or "User",
             "verification_url": verification_url,
         }

@@ -38,7 +38,7 @@ import tempfile
 import os
 
 TEST_DB_PATH = os.path.join(tempfile.gettempdir(), "facemortgage_test.db")
-TEST_DATABASE_URL = f"sqlite+aiosqlite:///{TEST_DB_PATH}"
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", f"sqlite+aiosqlite:///{TEST_DB_PATH}")
 
 
 @pytest.fixture(scope="session")

@@ -7,6 +7,8 @@ export default function ServiceWorkerRegistration() {
   useEffect(() => {
     // Only register service worker in production or if explicitly enabled
     if (typeof window === 'undefined') return;
+    // Skip SW in dev mode — HMR churn breaks the SW lifecycle
+    if (process.env.NODE_ENV !== 'production' && !process.env.NEXT_PUBLIC_ENABLE_SW_IN_DEV) return;
 
     // Check if service workers are supported
     if (!('serviceWorker' in navigator)) {

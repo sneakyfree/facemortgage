@@ -14,7 +14,7 @@ from src.app.core.auth import get_current_user
 from src.app.services.thumbnail_service import thumbnail_service
 from src.app.models.user import User
 
-router = APIRouter(prefix="/thumbnails", tags=["thumbnails"])
+router = APIRouter(tags=["thumbnails"])
 
 
 class ThumbnailRequest(BaseModel):

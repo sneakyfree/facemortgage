@@ -28,7 +28,7 @@ async def get_redis() -> redis.Redis:
 
     if _redis_client is None:
         _redis_pool = redis.ConnectionPool.from_url(
-            settings.REDIS_URL,
+            settings.redis_url,
             max_connections=20,
             decode_responses=True,
         )

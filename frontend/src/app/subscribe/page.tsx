@@ -6,7 +6,8 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { apiClient } from '@/lib/api/client';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
+const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = STRIPE_PK && STRIPE_PK.startsWith('pk_') ? loadStripe(STRIPE_PK) : null;
 
 interface Plan {
     id: string;
@@ -274,9 +275,15 @@ export default function SubscribePage() {
                         <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
                             Complete Your Subscription
                         </h2>
-                        <Elements stripe={stripePromise}>
-                            <CheckoutForm selectedPlan={selectedPlan} />
-                        </Elements>
+                        {stripePromise ? (
+                            <Elements stripe={stripePromise}>
+                                <CheckoutForm selectedPlan={selectedPlan} />
+                            </Elements>
+                        ) : (
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
+                                Payments are not configured in this environment. Set <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> to enable checkout.
+                            </div>
+                        )}
                     </div>
                 )}
 

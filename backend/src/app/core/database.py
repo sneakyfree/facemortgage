@@ -84,3 +84,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+
+def get_async_engine():
+    """Accessor for the module-level async engine (used by middleware/perf checks)."""
+    return engine

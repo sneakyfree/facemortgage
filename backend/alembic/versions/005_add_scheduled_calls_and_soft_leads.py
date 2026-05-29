@@ -25,7 +25,7 @@ def upgrade() -> None:
         name='scheduledcallstatus',
         create_type=False
     )
-    scheduled_call_status.create(op.get_bind(), checkfirst=True)
+    op.execute("DO $$ BEGIN CREATE TYPE scheduledcallstatus AS ENUM ('pending','confirmed','completed','cancelled','no_show'); EXCEPTION WHEN duplicate_object THEN NULL; END $$")
 
     # Create scheduled_calls table
     op.create_table(
@@ -38,7 +38,7 @@ def upgrade() -> None:
         sa.Column('professional_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('professional_profiles.id'), nullable=False),
         sa.Column('scheduled_for', sa.DateTime(), nullable=False, index=True),
         sa.Column('timezone', sa.String(50), default='America/New_York'),
-        sa.Column('status', sa.Enum('pending', 'confirmed', 'completed', 'cancelled', 'no_show', name='scheduledcallstatus'), default='pending'),
+        sa.Column('status', scheduled_call_status, default='pending'),
         sa.Column('loan_purpose', sa.String(50), nullable=True),
         sa.Column('notes', sa.Text(), nullable=True),
         sa.Column('reminder_sent_at', sa.DateTime(), nullable=True),
@@ -46,7 +46,6 @@ def upgrade() -> None:
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=False),
     )
-    op.create_index('ix_scheduled_calls_scheduled_for', 'scheduled_calls', ['scheduled_for'])
     op.create_index('ix_scheduled_calls_professional_id', 'scheduled_calls', ['professional_id'])
 
     # Create soft_lead_status enum
@@ -55,7 +54,7 @@ def upgrade() -> None:
         name='softleadstatus',
         create_type=False
     )
-    soft_lead_status.create(op.get_bind(), checkfirst=True)
+    op.execute("DO $$ BEGIN CREATE TYPE softleadstatus AS ENUM ('new','matched','contacted','converted','expired'); EXCEPTION WHEN duplicate_object THEN NULL; END $$")
 
     # Create soft_leads table
     op.create_table(
@@ -72,7 +71,7 @@ def upgrade() -> None:
         sa.Column('timeframe', sa.String(50), nullable=True),
         sa.Column('preferred_professional_type', sa.String(50), nullable=True),
         sa.Column('preferred_specialty', sa.String(100), nullable=True),
-        sa.Column('status', sa.Enum('new', 'matched', 'contacted', 'converted', 'expired', name='softleadstatus'), default='new'),
+        sa.Column('status', soft_lead_status, default='new'),
         sa.Column('matched_professional_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('professional_profiles.id'), nullable=True),
         sa.Column('matched_at', sa.DateTime(), nullable=True),
         sa.Column('converted_lead_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('leads.id'), nullable=True),
@@ -84,8 +83,6 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(), nullable=False),
         sa.Column('expires_at', sa.DateTime(), nullable=True),
     )
-    op.create_index('ix_soft_leads_email', 'soft_leads', ['email'])
-    op.create_index('ix_soft_leads_created_at', 'soft_leads', ['created_at'])
     op.create_index('ix_soft_leads_status', 'soft_leads', ['status'])
 
 

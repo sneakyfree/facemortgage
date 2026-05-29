@@ -18,6 +18,7 @@ import {
   Target,
 } from 'lucide-react';
 import { logger } from '@/lib/utils';
+import { analyticsApi } from '@/lib/api/endpoints';
 
 interface TimeSeriesPoint {
   date: string;
@@ -129,11 +130,8 @@ export default function AnalyticsDashboard() {
   async function fetchData() {
     try {
       setLoading(true);
-      const res = await fetch(`/api/v1/analytics/dashboard?period=${period}`);
-      if (res.ok) {
-        const dashboardData = await res.json();
-        setData(dashboardData);
-      }
+      const dashboardData = await analyticsApi.getDashboard(period);
+      setData(dashboardData as unknown as AnalyticsDashboard);
     } catch (error) {
       logger.error('Failed to fetch analytics:', error);
     } finally {

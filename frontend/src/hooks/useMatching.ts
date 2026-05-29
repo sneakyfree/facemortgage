@@ -111,7 +111,7 @@ export function useBorrowerIntake() {
     }, []);
 
     const isValid = useCallback(() => {
-        return profile.state.length === 2 && profile.loan_purpose;
+        return Boolean(profile.state.length === 2 && profile.loan_purpose);
     }, [profile]);
 
     const reset = useCallback(() => {

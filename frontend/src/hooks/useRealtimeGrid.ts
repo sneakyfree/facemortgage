@@ -135,8 +135,11 @@ export function useRealtimeGrid(options: UseRealtimeGridOptions = {}) {
         }
       };
 
-      wsRef.current.onerror = (error) => {
-        logger.error('Grid WebSocket error:', error);
+      wsRef.current.onerror = () => {
+        // Browser only exposes an opaque Event here. Suppress noisy log -
+        // onclose handles reconnect; we surface real failures via the
+        // "Max reconnection attempts reached" line below.
+        logger.log('Grid WebSocket error event (will retry via onclose)');
       };
     } catch (error) {
       logger.error('Failed to create WebSocket connection:', error);
