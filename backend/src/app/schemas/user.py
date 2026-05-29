@@ -53,4 +53,4 @@ class TokenPair(Token):
 
 
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str
+    refresh_token: Optional[str] = None  # primary source is the httpOnly cookie

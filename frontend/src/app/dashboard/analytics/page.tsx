@@ -112,6 +112,7 @@ function formatNumber(num: number): string {
 }
 
 function formatCurrency(amount: number): string {
+  amount = Number(amount) || 0;
   if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
   if (amount >= 1000) return `$${(amount / 1000).toFixed(0)}K`;
   return `$${amount.toFixed(0)}`;
@@ -231,7 +232,7 @@ export default function AnalyticsDashboard() {
           <MetricCard
             icon={<Star className="w-6 h-6 text-amber-600" />}
             label="Average Rating"
-            value={performance.avg_rating.toFixed(1)}
+            value={Number(performance.avg_rating || 0).toFixed(1)}
             subValue={`${performance.total_reviews} reviews`}
             bgColor="bg-amber-50"
             trend={performance.avg_rating / 5}
@@ -435,7 +436,7 @@ export default function AnalyticsDashboard() {
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div>
                   <p className="text-sm text-gray-500">Bid Wallet Balance</p>
-                  <p className="font-semibold text-gray-900">${billing.bid_wallet_balance.toFixed(2)}</p>
+                  <p className="font-semibold text-gray-900">${Number(billing.bid_wallet_balance || 0).toFixed(2)}</p>
                 </div>
                 <button className="text-sm text-blue-600 font-medium hover:underline">
                   Add Funds
@@ -445,7 +446,7 @@ export default function AnalyticsDashboard() {
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div>
                   <p className="text-sm text-gray-500">This Month&apos;s Spend</p>
-                  <p className="font-semibold text-gray-900">${billing.total_bid_spend_month.toFixed(2)}</p>
+                  <p className="font-semibold text-gray-900">${Number(billing.total_bid_spend_month || 0).toFixed(2)}</p>
                 </div>
               </div>
             </div>

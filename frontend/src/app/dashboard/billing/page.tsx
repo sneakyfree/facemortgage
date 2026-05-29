@@ -333,20 +333,20 @@ function BillingPageContent() {
                   <div className="bg-green-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-600">Available Credits</p>
                     <p className="text-2xl font-bold text-green-600">
-                      ${wallet.available_credits.toFixed(2)}
+                      ${Number(wallet.available_credits ?? 0).toFixed(2)}
                     </p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-600">Reserved</p>
                     <p className="text-2xl font-bold text-gray-600">
-                      ${wallet.reserved_credits.toFixed(2)}
+                      ${Number(wallet.reserved_credits ?? 0).toFixed(2)}
                     </p>
                   </div>
                 </div>
 
                 <div className="text-sm text-gray-500">
-                  <p>Total Deposited: ${wallet.total_deposited.toFixed(2)}</p>
-                  <p>Total Spent: ${wallet.total_spent.toFixed(2)}</p>
+                  <p>Total Deposited: ${Number(wallet.total_deposited ?? 0).toFixed(2)}</p>
+                  <p>Total Spent: ${Number(wallet.total_spent ?? 0).toFixed(2)}</p>
                 </div>
 
                 {/* Deposit Form */}

@@ -15,7 +15,7 @@ from typing import Optional, List
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, Request, Header, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 import stripe
 from redis.exceptions import RedisError
@@ -23,7 +23,8 @@ from redis.exceptions import RedisError
 logger = logging.getLogger(__name__)
 
 from src.app.config import settings
-from src.app.core.dependencies import DbSession, CurrentProfessional
+from src.app.models.call import VideoCall
+from src.app.core.dependencies import DbSession, CurrentProfessional, CurrentUser
 from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.professional import ProfessionalProfile, SubscriptionTier
 from src.app.models.billing import Subscription, BidWallet, BidTransaction, SubscriptionStatus
@@ -437,6 +438,43 @@ async def create_billing_portal_session(
 
 
 # ==================== Webhooks ====================
+
+@router.get("/usage")
+@limiter.limit(RATE_LIMITS["api_read"])
+async def get_usage(
+    request: Request,
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    """Get the current professional's monthly call usage vs plan limit."""
+    from datetime import datetime
+    prof = (await db.execute(
+        select(ProfessionalProfile).where(ProfessionalProfile.user_id == current_user.id)
+    )).scalar_one_or_none()
+    limits = {"FREE": 5, "BASIC": 25, "PROFESSIONAL": 100000, "PREMIUM": 100000}
+    if not prof:
+        return {"current": 0, "limit": 5, "unit": "calls"}
+    month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    count = (await db.execute(
+        select(func.count()).select_from(VideoCall).where(
+            VideoCall.professional_id == prof.id,
+            VideoCall.initiated_at >= month_start,
+        )
+    )).scalar() or 0
+    tier = prof.subscription_tier.value.upper() if prof.subscription_tier else "FREE"
+    return {"current": int(count), "limit": limits.get(tier, 25), "unit": "calls"}
+
+
+@router.get("/invoices")
+@limiter.limit(RATE_LIMITS["api_read"])
+async def get_invoices(
+    request: Request,
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    """Get the current professional's billing invoices (Stripe-backed; empty until configured)."""
+    return {"invoices": []}
+
 
 @router.post("/webhook")
 async def stripe_webhook(

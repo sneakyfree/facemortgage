@@ -56,7 +56,7 @@ export default function NotificationsSettingsPage() {
     useEffect(() => {
         async function fetchPreferences() {
             try {
-                const response = await apiClient.get('/api/v1/users/me/notifications');
+                const response = await apiClient.get('/users/me/notification-settings');
                 setPreferences(response.data);
             } catch (err) {
                 console.log('Using default preferences');
@@ -70,7 +70,7 @@ export default function NotificationsSettingsPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await apiClient.put('/api/v1/users/me/notifications', preferences);
+            await apiClient.put('/users/me/notification-settings', preferences);
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
         } catch (err) {

@@ -183,25 +183,25 @@ export default function BidWalletPage() {
                     <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500">
                         <p className="text-sm text-gray-600 mb-1">Available Credits</p>
                         <p className="text-3xl font-bold text-green-600">
-                            ${wallet?.available_credits.toFixed(2)}
+                            ${Number(wallet?.available_credits ?? 0).toFixed(2)}
                         </p>
                     </div>
                     <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-yellow-500">
                         <p className="text-sm text-gray-600 mb-1">Reserved (Active Bids)</p>
                         <p className="text-3xl font-bold text-yellow-600">
-                            ${wallet?.reserved_credits.toFixed(2)}
+                            ${Number(wallet?.reserved_credits ?? 0).toFixed(2)}
                         </p>
                     </div>
                     <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500">
                         <p className="text-sm text-gray-600 mb-1">Total Deposited</p>
                         <p className="text-3xl font-bold text-blue-600">
-                            ${wallet?.total_deposited.toFixed(2)}
+                            ${Number(wallet?.total_deposited ?? 0).toFixed(2)}
                         </p>
                     </div>
                     <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-gray-500">
                         <p className="text-sm text-gray-600 mb-1">Total Spent</p>
                         <p className="text-3xl font-bold text-gray-600">
-                            ${wallet?.total_spent.toFixed(2)}
+                            ${Number(wallet?.total_spent ?? 0).toFixed(2)}
                         </p>
                     </div>
                 </div>
@@ -284,10 +284,10 @@ export default function BidWalletPage() {
                                 <tbody>
                                     {bids.map((bid) => (
                                         <tr key={bid.id} className="border-b hover:bg-gray-50">
-                                            <td className="py-4 px-4 font-medium">${bid.daily_budget.toFixed(2)}</td>
-                                            <td className="py-4 px-4">${bid.bid_per_click?.toFixed(2) || '—'}</td>
-                                            <td className="py-4 px-4">${bid.daily_spent.toFixed(2)}</td>
-                                            <td className="py-4 px-4">${bid.total_spent.toFixed(2)}</td>
+                                            <td className="py-4 px-4 font-medium">${Number(bid.daily_budget ?? 0).toFixed(2)}</td>
+                                            <td className="py-4 px-4">${bid.bid_per_click != null ? Number(bid.bid_per_click).toFixed(2) : '—'}</td>
+                                            <td className="py-4 px-4">${Number(bid.daily_spent ?? 0).toFixed(2)}</td>
+                                            <td className="py-4 px-4">${Number(bid.total_spent ?? 0).toFixed(2)}</td>
                                             <td className="py-4 px-4">
                                                 <span
                                                     className={`px-2 py-1 rounded-full text-xs font-medium ${bid.is_active
@@ -352,7 +352,7 @@ export default function BidWalletPage() {
                                             className={`font-medium ${tx.transaction_type === 'deposit' ? 'text-green-600' : 'text-gray-900'
                                                 }`}
                                         >
-                                            {tx.transaction_type === 'deposit' ? '+' : '-'}${Math.abs(tx.amount).toFixed(2)}
+                                            {tx.transaction_type === 'deposit' ? '+' : '-'}${Math.abs(Number(tx.amount) || 0).toFixed(2)}
                                         </p>
                                         <p className="text-xs text-gray-400">
                                             {new Date(tx.created_at).toLocaleDateString()}

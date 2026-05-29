@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
-from src.app.core.dependencies import DbSession, CurrentProfessional, CurrentUserOptional
+from src.app.core.dependencies import DbSession, CurrentProfessional, CurrentUserOptional, CurrentUser
 from src.app.core.rate_limit import limiter, RATE_LIMITS
 from src.app.models.user import User
 from src.app.models.professional import (
@@ -198,6 +198,35 @@ async def list_professionals(
         total=total,
         filters_applied=filters_applied,
     )
+
+
+@router.get("/me")
+@limiter.limit(RATE_LIMITS["api_read"])
+async def get_my_professional_profile(
+    request: Request,
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    """Get the current authenticated professional's own profile."""
+    prof = (await db.execute(
+        select(ProfessionalProfile).where(ProfessionalProfile.user_id == current_user.id)
+    )).scalar_one_or_none()
+    if not prof:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Professional profile not found")
+    return {
+        "id": str(prof.id),
+        "company_name": prof.company_name,
+        "job_title": prof.job_title,
+        "bio": prof.bio,
+        "years_experience": prof.years_experience,
+        "nmls_id": prof.nmls_id,
+        "timezone": prof.timezone,
+        "status": prof.status.value if prof.status else None,
+        "subscription_tier": prof.subscription_tier.value if prof.subscription_tier else None,
+        "avg_rating": float(prof.avg_rating or 0),
+        "total_reviews": prof.total_reviews,
+        "profile_complete": prof.profile_complete,
+    }
 
 
 @router.get("/{professional_id}", response_model=ProfessionalResponse)

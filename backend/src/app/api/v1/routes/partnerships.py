@@ -9,7 +9,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
 
 from src.app.core.dependencies import DbSession, CurrentUser
@@ -224,6 +224,45 @@ async def get_my_partnerships(
         )
         for p in partnerships
     ]
+
+
+@router.get("/referrals", response_model=List[ReferralDetail])
+@limiter.limit(RATE_LIMITS["api_read"])
+async def get_my_referrals(
+    request: Request,
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    """Get all referrals across the current professional's partnerships."""
+    professional = (await db.execute(
+        select(ProfessionalProfile).where(ProfessionalProfile.user_id == current_user.id)
+    )).scalar_one_or_none()
+    if not professional:
+        return []
+    query = (
+        select(Partnership)
+        .options(selectinload(Partnership.referrals))
+        .where(or_(
+            Partnership.loan_officer_id == professional.id,
+            Partnership.realtor_id == professional.id,
+        ))
+    )
+    partnerships = (await db.execute(query)).scalars().all()
+    out = []
+    for p in partnerships:
+        for r in p.referrals:
+            out.append(ReferralDetail(
+                id=r.id,
+                borrower_name=r.borrower_name,
+                borrower_email=r.borrower_email,
+                borrower_phone=r.borrower_phone,
+                property_address=r.property_address,
+                loan_purpose=r.loan_purpose,
+                status=r.status,
+                source=r.source,
+                created_at=r.created_at,
+            ))
+    return out
 
 
 @router.get("/{partnership_id}/referrals", response_model=List[ReferralDetail])

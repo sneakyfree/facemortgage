@@ -46,10 +46,14 @@ apiClient.interceptors.response.use(
 
       try {
         // Refresh endpoint reads refresh_token from httpOnly cookie automatically
+        const refreshCsrf = getCsrfToken();
         await axios.post(
           `${API_BASE_URL}${API_V1_PREFIX}/auth/refresh`,
           {},
-          { withCredentials: true }
+          {
+            withCredentials: true,
+            headers: refreshCsrf ? { 'X-CSRF-Token': refreshCsrf } : {},
+          }
         );
 
         // Retry original request - new access_token cookie is set automatically

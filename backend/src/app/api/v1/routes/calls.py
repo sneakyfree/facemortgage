@@ -335,6 +335,42 @@ async def initiate_call(
     )
 
 
+@router.get("/history")
+@limiter.limit(RATE_LIMITS["api_read"])
+async def get_call_history(
+    request: Request,
+    current_user: CurrentUser,
+    db: DbSession,
+    status: Optional[str] = None,
+):
+    """Get the current user's call history (most recent first)."""
+    professional = (await db.execute(
+        select(ProfessionalProfile).where(ProfessionalProfile.user_id == current_user.id)
+    )).scalar_one_or_none()
+    q = select(VideoCall)
+    if professional:
+        q = q.where(VideoCall.professional_id == professional.id)
+    else:
+        q = q.where(VideoCall.borrower_id == current_user.id)
+    if status and status != "all":
+        try:
+            q = q.where(VideoCall.status == CallStatus(status))
+        except ValueError:
+            pass
+    q = q.order_by(VideoCall.initiated_at.desc()).limit(100)
+    calls = (await db.execute(q)).scalars().all()
+    return {"calls": [
+        {
+            "id": str(c.id),
+            "room_id": c.room_id,
+            "status": c.status.value if c.status else None,
+            "initiated_at": c.initiated_at.isoformat() if c.initiated_at else None,
+            "duration_seconds": c.duration_seconds,
+        }
+        for c in calls
+    ]}
+
+
 @router.get("/{room_id}", response_model=CallStateResponse)
 @limiter.limit(RATE_LIMITS["api_read"])
 async def get_call_state(

@@ -44,11 +44,11 @@ export default function PartnershipsPage() {
     setLoading(true);
     try {
       const [partnersRes, referralsRes] = await Promise.all([
-        apiClient.get('/partnerships'),
+        apiClient.get('/partnerships/my-partnerships'),
         apiClient.get('/partnerships/referrals'),
       ]);
-      setPartners(partnersRes.data.partnerships || []);
-      setReferrals(referralsRes.data.referrals || []);
+      setPartners(Array.isArray(partnersRes.data) ? partnersRes.data : (partnersRes.data.partnerships || []));
+      setReferrals(Array.isArray(referralsRes.data) ? referralsRes.data : (referralsRes.data.referrals || []));
     } catch (err) {
       console.error('Failed to load partnerships:', err);
     } finally {

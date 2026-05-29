@@ -5,7 +5,7 @@
  * In production, ensure NEXT_PUBLIC_API_URL and NEXT_PUBLIC_WS_URL are set.
  */
 
-function getEnvVar(name: string, fallback: string): string {
+function getEnvVar(name: string, value: string | undefined, fallback: string): string {
   if (typeof window !== 'undefined') {
     // Client-side: use window.__ENV__ if available (for runtime config)
     const windowEnv = (window as unknown as { __ENV__?: Record<string, string> }).__ENV__;
@@ -14,8 +14,8 @@ function getEnvVar(name: string, fallback: string): string {
     }
   }
 
-  // Use Next.js public env vars
-  const value = process.env[name];
+  // Next.js only inlines STATIC process.env.NEXT_PUBLIC_* references; the caller
+  // must pass that static value here (a dynamic process.env[name] is never inlined).
   if (value) {
     return value;
   }
@@ -45,12 +45,14 @@ function deriveWsUrl(apiUrl: string): string {
 // API Configuration
 export const API_BASE_URL = getEnvVar(
   'NEXT_PUBLIC_API_URL',
+  process.env.NEXT_PUBLIC_API_URL,
   'http://localhost:8000'
 );
 
 // WebSocket Configuration
 export const WS_BASE_URL = getEnvVar(
   'NEXT_PUBLIC_WS_URL',
+  process.env.NEXT_PUBLIC_WS_URL,
   deriveWsUrl(API_BASE_URL)
 );
 

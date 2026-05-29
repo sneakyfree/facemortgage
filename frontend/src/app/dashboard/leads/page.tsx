@@ -71,6 +71,7 @@ const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bgColor:
 };
 
 function formatCurrency(amount: number): string {
+  amount = Number(amount) || 0;
   if (amount >= 1000000) {
     return `$${(amount / 1000000).toFixed(1)}M`;
   }
