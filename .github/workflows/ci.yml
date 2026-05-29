@@ -132,6 +132,9 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -147,6 +150,9 @@ jobs:
 
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v3
+        # Code scanning may be disabled on this repo (no GitHub Advanced Security);
+        # don't fail the job if the SARIF upload is rejected.
+        continue-on-error: true
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
